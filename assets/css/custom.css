@@ -1,0 +1,58 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f4f6f9;
+}
+
+#sidebar-wrapper {
+    transition: width 0.25s ease;
+    overflow-y: auto;
+}
+
+#sidebar-wrapper .list-group-item {
+    padding: 12px 20px;
+    font-size: 0.9rem;
+}
+
+#sidebar-wrapper .list-group-item:hover {
+    background-color: #495057 !important;
+}
+
+#sidebar-wrapper .list-group-item.active {
+    background-color: #0d6efd !important;
+    border-color: #0d6efd !important;
+}
+
+#page-content-wrapper {
+    min-height: 100vh;
+    background-color: #f4f6f9;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}
+
+.stat-card {
+    border-left: 4px solid;
+}
+
+.stat-card.blue { border-left-color: #0d6efd; }
+.stat-card.green { border-left-color: #198754; }
+.stat-card.orange { border-left-color: #fd7e14; }
+.stat-card.red { border-left-color: #dc3545; }
+
+.table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+}
+
+.badge {
+    font-weight: 500;
+}
+
+.sidebar-heading {
+    background-color: #212529;
+}

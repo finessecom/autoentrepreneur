@@ -1,0 +1,5 @@
+/vendor/
+/.mimocode/
+/uploads/
+*.log
+.DS_Store
