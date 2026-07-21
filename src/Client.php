@@ -70,4 +70,8 @@ class Client {
         $stmt->execute([$userId]);
         return (int) $stmt->fetchColumn();
     }
+
+    public function countAll(): int {
+        return (int) $this->db->query('SELECT COUNT(*) FROM clients')->fetchColumn();
+    }
 }

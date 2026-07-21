@@ -73,10 +73,6 @@ $user = $userModel->getById(Auth::userId());
                         <strong class="text-muted d-block small">Langue principale</strong>
                         <?= Helper::sanitize($user['langue_principale'] ?? '-') ?>
                     </div>
-                    <div class="col-12">
-                        <strong class="text-muted d-block small">Bio</strong>
-                        <?= nl2br(Helper::sanitize($user['bio'] ?? '-')) ?>
-                    </div>
                 </div>
             </div>
         </div>
@@ -98,8 +94,12 @@ $user = $userModel->getById(Auth::userId());
                         <code><?= Helper::sanitize($user['identifiant_fiscal'] ?? '-') ?></code>
                     </div>
                     <div class="col-md-6">
-                        <strong class="text-muted d-block small">CNIE</strong>
-                        <code><?= Helper::sanitize($user['cnie'] ?? '-') ?></code>
+                        <strong class="text-muted d-block small">Nom de la banque</strong>
+                        <?= Helper::sanitize($user['nom_banque'] ?? '-') ?>
+                    </div>
+                    <div class="col-md-6">
+                        <strong class="text-muted d-block small">RIB</strong>
+                        <code><?= Helper::sanitize($user['rib'] ?? '-') ?></code>
                     </div>
                     <div class="col-md-6">
                         <strong class="text-muted d-block small">Taxe professionnelle</strong>

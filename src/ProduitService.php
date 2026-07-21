@@ -29,13 +29,15 @@ class ProduitService {
 
     public function create(int $userId, array $data): int {
         $stmt = $this->db->prepare(
-            'INSERT INTO produits_services (user_id, type_activite, designation, prix_unitaire, image_url) VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO produits_services (user_id, type_activite, designation, detail, prix_unitaire, devise, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $userId,
             $data['type_activite'],
             $data['designation'],
+            $data['detail'] ?? null,
             $data['prix_unitaire'],
+            $data['devise'] ?? 'MAD',
             $data['image_url'] ?? null
         ]);
         return (int) $this->db->lastInsertId();
@@ -43,12 +45,14 @@ class ProduitService {
 
     public function update(int $id, int $userId, array $data): bool {
         $stmt = $this->db->prepare(
-            'UPDATE produits_services SET type_activite = ?, designation = ?, prix_unitaire = ?, image_url = ? WHERE id = ? AND user_id = ?'
+            'UPDATE produits_services SET type_activite = ?, designation = ?, detail = ?, prix_unitaire = ?, devise = ?, image_url = ? WHERE id = ? AND user_id = ?'
         );
         return $stmt->execute([
             $data['type_activite'],
             $data['designation'],
+            $data['detail'] ?? null,
             $data['prix_unitaire'],
+            $data['devise'] ?? 'MAD',
             $data['image_url'] ?? null,
             $id,
             $userId
@@ -64,5 +68,9 @@ class ProduitService {
         $stmt = $this->db->prepare('SELECT COUNT(*) FROM produits_services WHERE user_id = ?');
         $stmt->execute([$userId]);
         return (int) $stmt->fetchColumn();
+    }
+
+    public function countAll(): int {
+        return (int) $this->db->query('SELECT COUNT(*) FROM produits_services')->fetchColumn();
     }
 }

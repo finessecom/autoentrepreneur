@@ -17,6 +17,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $passwordConfirm = $_POST['password_confirm'] ?? '';
     $ville = trim($_POST['ville'] ?? '');
+    $prefixeDevis = trim($_POST['prefixe_devis'] ?? 'DEV');
+    $prefixeFacture = trim($_POST['prefixe_facture'] ?? 'FAC');
+    $prefixeLivraison = trim($_POST['prefixe_livraison'] ?? 'BL');
 
     if (empty($nomComplet) || empty($email) || empty($password)) {
         $error = 'Veuillez remplir tous les champs obligatoires.';
@@ -28,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Adresse email invalide.';
     } else {
         $auth = new Auth();
-        if ($auth->register($nomComplet, $email, $password, $ville)) {
+        if ($auth->register($nomComplet, $email, $password, $ville, $prefixeDevis, $prefixeFacture, $prefixeLivraison)) {
             Helper::redirect(APP_URL . '/?page=dashboard');
         } else {
             $error = Helper::getError() ?? 'Erreur lors de l\'inscription.';
@@ -79,6 +82,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label class="form-label">Ville</label>
                         <input type="text" name="ville" class="form-control"
                                value="<?= Helper::sanitize($_POST['ville'] ?? '') ?>" placeholder="Casablanca">
+                    </div>
+                    <hr>
+                    <p class="text-muted small mb-2">Préfixes des documents (numérotation auto)</p>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label">Devis</label>
+                            <input type="text" name="prefixe_devis" class="form-control" maxlength="10"
+                                   value="<?= Helper::sanitize($_POST['prefixe_devis'] ?? 'DEV') ?>">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Facture</label>
+                            <input type="text" name="prefixe_facture" class="form-control" maxlength="10"
+                                   value="<?= Helper::sanitize($_POST['prefixe_facture'] ?? 'FAC') ?>">
+                        </div>
+                        <div class="col">
+                            <label class="form-label">Livraison</label>
+                            <input type="text" name="prefixe_livraison" class="form-control" maxlength="10"
+                                   value="<?= Helper::sanitize($_POST['prefixe_livraison'] ?? 'BL') ?>">
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Mot de passe * (min 6 car.)</label>

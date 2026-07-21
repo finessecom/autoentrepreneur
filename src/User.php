@@ -17,8 +17,8 @@ class User {
             'nom_complet', 'nom_affichage', 'titre_pro', 'titre_pro_ar', 'ville',
             'langue_principale', 'bio', 'bio_ar', 'whatsapp', 'telephone',
             'site_web', 'mots_cles', 'raison_sociale', 'email_pro',
-            'cnie', 'ice', 'identifiant_fiscal', 'taxe_professionnelle',
-            'prefixe_devis', 'prefixe_facture', 'prefixe_livraison',
+            'ice', 'identifiant_fiscal', 'taxe_professionnelle',
+            'nom_banque', 'rib',
             'signature_taille', 'prefixe_devis', 'prefixe_facture', 'prefixe_livraison'
         ];
 
@@ -27,7 +27,7 @@ class User {
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
                 $sets[] = "$field = ?";
-                $values[] = trim($data[$field]);
+                $values[] = is_string($data[$field]) ? trim($data[$field]) : '';
             }
         }
 
@@ -50,12 +50,12 @@ class User {
         return $stmt->execute([$hash, $id]);
     }
 
-    public function updateSignature(int $id, string $path): bool {
+    public function updateSignature(int $id, ?string $path): bool {
         $stmt = $this->db->prepare('UPDATE users SET signature_url = ? WHERE id = ?');
         return $stmt->execute([$path, $id]);
     }
 
-    public function updateLogo(int $id, string $path): bool {
+    public function updateLogo(int $id, ?string $path): bool {
         $stmt = $this->db->prepare('UPDATE users SET logo_pdf_url = ? WHERE id = ?');
         return $stmt->execute([$path, $id]);
     }

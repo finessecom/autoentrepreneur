@@ -1,5 +1,5 @@
 <?php
-session_start();
+require_once __DIR__ . '/config/security.php';
 require_once __DIR__ . '/config/app.php';
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/src/Helper.php';
@@ -9,8 +9,14 @@ require_once __DIR__ . '/src/Client.php';
 require_once __DIR__ . '/src/ProduitService.php';
 require_once __DIR__ . '/src/Document.php';
 require_once __DIR__ . '/src/Declaration.php';
+require_once __DIR__ . '/src/Annonce.php';
 
-Auth::check();
+set_security_headers();
+
+if (!isset($_SESSION['user_id'])) {
+    header('Location: landing.php');
+    exit;
+}
 
 $page = $_GET['page'] ?? 'dashboard';
 
@@ -38,6 +44,8 @@ $routes = [
     'profil'        => 'pages/profil/index.php',
     'profil/edit'   => 'pages/profil/edit.php',
     'admin'         => 'pages/admin/dashboard.php',
+    'admin/annonces'=> 'pages/admin/annonces.php',
+    'annonces/view' => 'pages/annonces/view.php',
 ];
 
 $routeFile = $routes[$page] ?? $routes['dashboard'];

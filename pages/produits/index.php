@@ -61,14 +61,14 @@ $produits = $prodModel->getByUser(Auth::userId(), $type);
                                 <?php if ($prod['image_url']): ?>
                                     <img src="<?= APP_URL . '/' . $prod['image_url'] ?>" alt="" width="32" height="32" class="rounded me-2" style="object-fit:cover">
                                 <?php endif; ?>
-                                <?= Helper::sanitize($prod['designation']) ?>
+                                <?= nl2br(Helper::sanitize($prod['designation'])) ?>
                             </td>
                             <td>
                                 <span class="badge bg-<?= $prod['type_activite'] === 'commerce' ? 'primary' : 'success' ?>">
                                     <?= ucfirst($prod['type_activite']) ?>
                                 </span>
                             </td>
-                            <td class="text-end fw-semibold"><?= Helper::formatMoney($prod['prix_unitaire']) ?></td>
+                            <td class="text-end fw-semibold"><?= Helper::formatMoney($prod['prix_unitaire'], $prod['devise'] ?? 'MAD') ?></td>
                             <td><?= date('d/m/Y', strtotime($prod['created_at'])) ?></td>
                             <td class="text-center">
                                 <a href="<?= APP_URL ?>/?page=produits/edit&id=<?= $prod['id'] ?>" class="btn btn-sm btn-outline-primary">

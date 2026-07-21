@@ -50,7 +50,7 @@ class Document {
 
     public function getById(int $id, int $userId): ?array {
         $stmt = $this->db->prepare(
-            'SELECT d.*, c.nom_client, c.ice AS client_ice, c.email AS client_email, c.telephone AS client_telephone, c.adresse AS client_adresse
+            'SELECT d.*, c.nom_client, c.ice AS client_ice, c.email AS client_email, c.telephone AS client_telephone, c.adresse AS client_adresse, c.devise AS client_devise
              FROM documents d JOIN clients c ON d.client_id = c.id WHERE d.id = ? AND d.user_id = ?'
         );
         $stmt->execute([$id, $userId]);
@@ -74,7 +74,7 @@ class Document {
             $numero = $this->generateNumero($userId, $data['type_document']);
 
             $stmt = $this->db->prepare(
-                'INSERT INTO documents (numero, user_id, client_id, type_document, date_document, total_ht, total_ttc, statut) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+                'INSERT INTO documents (numero, user_id, client_id, type_document, date_document, total_ht, total_ttc, statut, devise) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
             );
             $stmt->execute([
                 $numero,
@@ -84,13 +84,14 @@ class Document {
                 $data['date_document'],
                 $totalHT,
                 $totalHT,
-                $data['statut'] ?? 'brouillon'
+                $data['statut'] ?? 'brouillon',
+                $data['devise'] ?? 'MAD'
             ]);
 
             $docId = (int) $this->db->lastInsertId();
 
             $stmtItem = $this->db->prepare(
-                'INSERT INTO document_items (document_id, produit_service_id, designation, quantite, prix_unitaire, total_ligne) VALUES (?, ?, ?, ?, ?, ?)'
+                'INSERT INTO document_items (document_id, produit_service_id, designation, detail, quantite, prix_unitaire, total_ligne) VALUES (?, ?, ?, ?, ?, ?, ?)'
             );
             foreach ($items as $item) {
                 $totalLigne = $item['quantite'] * $item['prix_unitaire'];
@@ -98,6 +99,7 @@ class Document {
                     $docId,
                     $item['produit_service_id'] ?? null,
                     $item['designation'],
+                    $item['detail'] ?? null,
                     $item['quantite'],
                     $item['prix_unitaire'],
                     $totalLigne
@@ -121,7 +123,7 @@ class Document {
             }
 
             $stmt = $this->db->prepare(
-                'UPDATE documents SET client_id = ?, type_document = ?, date_document = ?, total_ht = ?, total_ttc = ?, statut = ? WHERE id = ? AND user_id = ?'
+                'UPDATE documents SET client_id = ?, type_document = ?, date_document = ?, total_ht = ?, total_ttc = ?, statut = ?, devise = ? WHERE id = ? AND user_id = ?'
             );
             $stmt->execute([
                 $data['client_id'],
@@ -130,6 +132,7 @@ class Document {
                 $totalHT,
                 $totalHT,
                 $data['statut'] ?? 'brouillon',
+                $data['devise'] ?? 'MAD',
                 $id,
                 $userId
             ]);
@@ -137,7 +140,7 @@ class Document {
             $this->db->prepare('DELETE FROM document_items WHERE document_id = ?')->execute([$id]);
 
             $stmtItem = $this->db->prepare(
-                'INSERT INTO document_items (document_id, produit_service_id, designation, quantite, prix_unitaire, total_ligne) VALUES (?, ?, ?, ?, ?, ?)'
+                'INSERT INTO document_items (document_id, produit_service_id, designation, detail, quantite, prix_unitaire, total_ligne) VALUES (?, ?, ?, ?, ?, ?, ?)'
             );
             foreach ($items as $item) {
                 $totalLigne = $item['quantite'] * $item['prix_unitaire'];
@@ -145,6 +148,7 @@ class Document {
                     $id,
                     $item['produit_service_id'] ?? null,
                     $item['designation'],
+                    $item['detail'] ?? null,
                     $item['quantite'],
                     $item['prix_unitaire'],
                     $totalLigne
@@ -164,6 +168,38 @@ class Document {
         return $stmt->execute([$statut, $id, $userId]);
     }
 
+    public function updateDeclaration(int $id, int $userId, ?int $trimestre, ?int $annee, ?float $total = null): bool {
+        $stmt = $this->db->prepare('UPDATE documents SET decl_trimestre = ?, decl_annee = ?, decl_total = ? WHERE id = ? AND user_id = ?');
+        return $stmt->execute([$trimestre, $annee, $total, $id, $userId]);
+    }
+
+    public function getSumByDeclaration(int $userId, int $annee, int $trimestre): array {
+        $stmt = $this->db->prepare(
+            'SELECT type_activite, SUM(COALESCE(decl_total, total_ht)) AS total FROM documents d
+             JOIN document_items di ON di.document_id = d.id
+             JOIN produits_services ps ON ps.id = di.produit_service_id
+             WHERE d.user_id = ? AND d.decl_annee = ? AND d.decl_trimestre = ? AND d.statut = "paye" AND d.devise = "MAD"
+             GROUP BY type_activite'
+        );
+        $stmt->execute([$userId, $annee, $trimestre]);
+        $result = ['commerce' => 0, 'service' => 0];
+        while ($row = $stmt->fetch()) {
+            $result[$row['type_activite']] = (float) $row['total'];
+        }
+        return $result;
+    }
+
+    public function getByDeclaration(int $userId, int $annee, int $trimestre): array {
+        $stmt = $this->db->prepare(
+            'SELECT d.numero, d.date_document, d.total_ht, d.decl_total, d.devise, c.nom_client
+             FROM documents d JOIN clients c ON d.client_id = c.id
+             WHERE d.user_id = ? AND d.decl_annee = ? AND d.decl_trimestre = ? AND d.statut = "paye"
+             ORDER BY d.date_document ASC'
+        );
+        $stmt->execute([$userId, $annee, $trimestre]);
+        return $stmt->fetchAll();
+    }
+
     public function delete(int $id, int $userId): bool {
         $stmt = $this->db->prepare('DELETE FROM documents WHERE id = ? AND user_id = ?');
         return $stmt->execute([$id, $userId]);
@@ -176,7 +212,7 @@ class Document {
     }
 
     public function totalCA(int $userId): float {
-        $stmt = $this->db->prepare('SELECT COALESCE(SUM(total_ttc), 0) FROM documents WHERE user_id = ? AND type_document = "facture" AND statut != "annule"');
+        $stmt = $this->db->prepare('SELECT COALESCE(SUM(total_ht), 0) FROM documents WHERE user_id = ? AND type_document = "facture" AND statut != "annule"');
         $stmt->execute([$userId]);
         return (float) $stmt->fetchColumn();
     }
@@ -195,8 +231,13 @@ class Document {
         return (int) $this->db->query('SELECT COUNT(*) FROM documents')->fetchColumn();
     }
 
+    public function getAll(): array {
+        $stmt = $this->db->query('SELECT d.*, c.nom_client FROM documents d JOIN clients c ON d.client_id = c.id ORDER BY d.created_at DESC');
+        return $stmt->fetchAll();
+    }
+
     public function totalCAAll(): float {
-        return (float) $this->db->query('SELECT COALESCE(SUM(total_ttc), 0) FROM documents WHERE type_document = "facture" AND statut != "annule"')->fetchColumn();
+        return (float) $this->db->query('SELECT COALESCE(SUM(total_ht), 0) FROM documents WHERE type_document = "facture" AND statut != "annule"')->fetchColumn();
     }
 
     public function countByTypeAll(): array {

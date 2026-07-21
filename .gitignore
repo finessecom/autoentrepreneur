@@ -3,3 +3,8 @@
 /uploads/
 *.log
 .DS_Store
+.env
+.env.*
+*.sql
+!database/autoentrepreneur_final.sql
+/config/database.php

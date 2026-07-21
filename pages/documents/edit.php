@@ -19,11 +19,14 @@ $clients = $clientModel->getByUser(Auth::userId());
 $produits = $prodModel->getByUser(Auth::userId());
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $clientModel = new Client();
+    $clientData = $clientModel->getById((int)$_POST['client_id'], Auth::userId());
     $data = [
         'client_id'     => (int)$_POST['client_id'],
         'type_document' => $_POST['type_document'],
         'date_document' => $_POST['date_document'],
         'statut'        => $_POST['statut'] ?? 'brouillon',
+        'devise'        => $clientData['devise'] ?? 'MAD',
     ];
 
     $newItems = [];
@@ -33,6 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newItems[] = [
                 'produit_service_id' => !empty($_POST['item_produit_id'][$i]) ? (int)$_POST['item_produit_id'][$i] : null,
                 'designation'        => trim($designation),
+                'detail'             => trim($_POST['item_detail'][$i] ?? ''),
                 'quantite'           => (int)$_POST['item_quantite'][$i],
                 'prix_unitaire'      => (float)$_POST['item_prix'][$i],
             ];
@@ -102,9 +106,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table" id="itemsTable">
-                    <thead><tr><th>Désignation</th><th>Produit</th><th>Qté</th><th>Prix</th><th>Total</th><th></th></tr></thead>
+                    <thead><tr><th>Désignation</th><th>Produit</th><th>Détail</th><th>Qté</th><th>Prix</th><th>Total</th><th></th></tr></thead>
                     <tbody id="itemsBody"></tbody>
-                    <tfoot><tr class="table-active"><td colspan="4" class="text-end fw-bold">Total :</td><td id="totalTTC" class="fw-bold">0.00 MAD</td><td></td></tr></tfoot>
+                    <tfoot><tr class="table-active"><td colspan="4" class="text-end fw-bold">Total HT :</td><td id="totalHT" class="fw-bold">0.00 MAD</td><td></td></tr></tfoot>
                 </table>
             </div>
         </div>
@@ -120,16 +124,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 const produits = <?= json_encode($produits) ?>;
 const existingItems = <?= json_encode($items) ?>;
 
-function addLine(designation = '', produitId = '', qte = 1, prix = 0) {
+function addLine(designation = '', produitId = '', detail = '', qte = 1, prix = 0) {
     const tbody = document.getElementById('itemsBody');
     const row = document.createElement('tr');
     let options = '<option value="">Saisie libre</option>';
     produits.forEach(p => {
-        options += `<option value="${p.id}" data-prix="${p.prix_unitaire}" ${p.id == produitId ? 'selected' : ''}>${p.designation}</option>`;
+        options += `<option value="${p.id}" data-prix="${p.prix_unitaire}" data-detail="${(p.detail || '').replace(/"/g, '&quot;')}" ${p.id == produitId ? 'selected' : ''}>${p.designation}</option>`;
     });
     row.innerHTML = `
-        <td><input type="text" name="item_designation[]" class="form-control form-control-sm" required value="${designation}"></td>
+        <td><textarea name="item_designation[]" class="form-control form-control-sm" rows="2" required placeholder="Désignation...">${designation}</textarea></td>
         <td><select name="item_produit_id[]" class="form-select form-select-sm" onchange="selectProduit(this)">${options}</select></td>
+        <td><textarea name="item_detail[]" class="form-control form-control-sm" rows="1" placeholder="Détail...">${detail}</textarea></td>
         <td><input type="number" name="item_quantite[]" class="form-control form-control-sm" min="1" value="${qte}" oninput="calcTotal(this)"></td>
         <td><input type="number" name="item_prix[]" class="form-control form-control-sm" step="0.01" value="${parseFloat(prix).toFixed(2)}" oninput="calcTotal(this)"></td>
         <td class="align-middle fw-semibold total-ligne">0.00</td>
@@ -142,7 +147,8 @@ function addLine(designation = '', produitId = '', qte = 1, prix = 0) {
 function selectProduit(sel) {
     const row = sel.closest('tr');
     const opt = sel.options[sel.selectedIndex];
-    row.querySelector('input[name="item_designation[]"]').value = opt.textContent;
+    row.querySelector('textarea[name="item_designation[]"]').value = opt.textContent;
+    row.querySelector('textarea[name="item_detail[]"]').value = opt.dataset.detail || '';
     row.querySelector('input[name="item_prix[]"]').value = parseFloat(opt.dataset.prix || 0).toFixed(2);
     calcTotal(sel);
 }
@@ -154,12 +160,12 @@ function calcTotal(el) {
     row.querySelector('.total-ligne').textContent = (qte * prix).toFixed(2);
     let grand = 0;
     document.querySelectorAll('.total-ligne').forEach(td => grand += parseFloat(td.textContent) || 0);
-    document.getElementById('totalTTC').textContent = grand.toFixed(2) + ' MAD';
+    document.getElementById('totalHT').textContent = grand.toFixed(2) + ' MAD';
 }
 
 function removeLine(btn) { btn.closest('tr').remove(); }
 
-existingItems.forEach(item => addLine(item.designation, item.produit_service_id, item.quantite, item.prix_unitaire));
+existingItems.forEach(item => addLine(item.designation, item.produit_service_id, item.detail || '', item.quantite, item.prix_unitaire));
 </script>
 
 <?php require_once __DIR__ . '/../../includes/footer.php'; ?>

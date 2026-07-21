@@ -45,13 +45,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Désignation *</label>
-                    <input type="text" name="designation" class="form-control" required
-                           value="<?= Helper::sanitize($_POST['designation'] ?? '') ?>">
+                    <textarea name="designation" class="form-control" rows="3" required
+                              placeholder="Nom du produit/service..."><?= Helper::sanitize($_POST['designation'] ?? '') ?></textarea>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label">Prix unitaire (MAD) *</label>
+                    <label class="form-label">Détail</label>
+                    <textarea name="detail" class="form-control" rows="2"
+                              placeholder="Description détaillée..."><?= Helper::sanitize($_POST['detail'] ?? '') ?></textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Prix unitaire *</label>
                     <input type="number" name="prix_unitaire" class="form-control" required step="0.01" min="0"
                            value="<?= $_POST['prix_unitaire'] ?? '' ?>">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Devise</label>
+                    <select name="devise" class="form-select">
+                        <?php foreach (Helper::devises() as $d): ?>
+                            <option value="<?= $d ?>" <?= ($_POST['devise'] ?? 'MAD') === $d ? 'selected' : '' ?>><?= $d ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Image</label>

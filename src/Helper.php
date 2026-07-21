@@ -46,8 +46,17 @@ class Helper {
         }
     }
 
-    public static function formatMoney(float $amount): string {
-        return number_format($amount, 2, '.', ',') . ' MAD';
+    public static function formatMoney(float $amount, string $devise = 'MAD'): string {
+        return number_format($amount, 2, '.', ',') . ' ' . strtoupper($devise);
+    }
+
+    public static function deviseLabel(string $devise): string {
+        $labels = ['MAD' => 'Dirham marocain', 'EUR' => 'Euro', 'USD' => 'Dollar américain', 'GBP' => 'Livre sterling'];
+        return $labels[strtoupper($devise)] ?? strtoupper($devise);
+    }
+
+    public static function devises(): array {
+        return ['MAD', 'EUR', 'USD', 'GBP'];
     }
 
     public static function generateRef(string $type, int $year, int $id): string {
@@ -56,15 +65,17 @@ class Helper {
         return sprintf('%s-%d-%04d', $prefix, $year, $id);
     }
 
-    public static function montantEnLettres(float $amount): string {
+    public static function montantEnLettres(float $amount, string $devise = 'MAD'): string {
         $whole = (int) floor($amount);
         $cents = (int) round(($amount - $whole) * 100);
 
-        $ones = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf',
-                 'dix', 'onze', 'douze', 'treize', 'quatorze', 'quinze', 'seize',
-                 'dix-sept', 'dix-huit', 'dix-neuf'];
-        $tens = ['', '', 'vingt', 'trente', 'quarante', 'cinquante',
-                'soixante', 'soixante-dix', 'quatre-vingts', 'quatre-vingt-dix'];
+        $currencyNames = [
+            'MAD' => ['singular' => 'dirham', 'plural' => 'dirhams', 'sub' => 'centime', 'subPlural' => 'centimes'],
+            'EUR' => ['singular' => 'euro', 'plural' => 'euros', 'sub' => 'centime', 'subPlural' => 'centimes'],
+            'USD' => ['singular' => 'dollar', 'plural' => 'dollars', 'sub' => 'cent', 'subPlural' => 'cents'],
+            'GBP' => ['singular' => 'livre', 'plural' => 'livres', 'sub' => 'penny', 'subPlural' => 'pence'],
+        ];
+        $curr = $currencyNames[strtoupper($devise)] ?? $currencyNames['MAD'];
 
         if ($whole === 0) return 'zéro';
 
@@ -84,10 +95,11 @@ class Helper {
         }
 
         $result = trim($result);
+        $currencyWord = $whole > 1 ? $curr['plural'] : $curr['singular'];
         if ($cents > 0) {
-            $result .= ' dirhams et ' . self::numberToWords($cents) . ' centimes';
+            $result .= ' ' . $currencyWord . ' et ' . self::numberToWords($cents) . ' ' . $curr['subPlural'];
         } else {
-            $result .= ' dirhams';
+            $result .= ' ' . $currencyWord;
         }
 
         return ucfirst($result);

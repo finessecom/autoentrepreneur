@@ -6,7 +6,7 @@ class Auth {
         $this->db = Database::getInstance();
     }
 
-    public function register(string $nomComplet, string $email, string $password, string $ville = ''): bool {
+    public function register(string $nomComplet, string $email, string $password, string $ville = '', string $prefixeDevis = 'DEV', string $prefixeFacture = 'FAC', string $prefixeLivraison = 'BL'): bool {
         $stmt = $this->db->prepare('SELECT id FROM users WHERE email = ?');
         $stmt->execute([$email]);
         if ($stmt->fetch()) {
@@ -18,9 +18,9 @@ class Auth {
         $nomAffichage = explode(' ', $nomComplet)[0];
 
         $stmt = $this->db->prepare(
-            'INSERT INTO users (nom_complet, nom_affichage, email, password, ville) VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO users (nom_complet, nom_affichage, email, password, ville, prefixe_devis, prefixe_facture, prefixe_livraison) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
         );
-        $stmt->execute([$nomComplet, $nomAffichage, $email, $hash, $ville]);
+        $stmt->execute([$nomComplet, $nomAffichage, $email, $hash, $ville, $prefixeDevis, $prefixeFacture, $prefixeLivraison]);
 
         $userId = (int) $this->db->lastInsertId();
         $_SESSION['user_id'] = $userId;

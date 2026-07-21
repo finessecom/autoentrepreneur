@@ -6,15 +6,20 @@ $docModel = new Document();
 $clientModel = new Client();
 $prodModel = new ProduitService();
 $declModel = new Declaration();
+$annonceModel = new Annonce();
+$userModel = new User();
 
 if (Auth::isAdmin()) {
-    $totalUsers = $clientModel->count(0);
-    $userModel2 = new User();
-    $totalUsers = $userModel2->count();
+    $totalUsers = $userModel->count();
     $docStats = $docModel->countByTypeAll();
     $totalDocs = $docModel->countAll();
     $totalCA = $docModel->totalCAAll();
     $totalDeclarations = $declModel->countAll();
+    $allUsers = $userModel->getAll();
+    $totalClients = $clientModel->countAll();
+    $totalProduits = $prodModel->countAll();
+    $posts = $annonceModel->getByType('post');
+    $annoncesList = $annonceModel->getByType('annonce');
 } else {
     $userId = Auth::userId();
     $docStats = $docModel->countByType($userId);
@@ -25,11 +30,18 @@ if (Auth::isAdmin()) {
     $totalDeclarations = $declModel->count($userId);
     $recentDocs = $docModel->getByUser($userId, '', '');
     array_splice($recentDocs, 5);
+    $posts = $annonceModel->getByType('post');
+    $annoncesList = $annonceModel->getByType('annonce');
 }
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i> Tableau de bord</h4>
+    <?php if (Auth::isAdmin()): ?>
+    <a href="<?= APP_URL ?>/?page=admin/annonces" class="btn btn-primary btn-sm">
+        <i class="fas fa-bullhorn me-1"></i> Nouvelle annonce
+    </a>
+    <?php endif; ?>
 </div>
 
 <!-- Stats Cards -->
@@ -45,8 +57,28 @@ if (Auth::isAdmin()) {
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div><h5 class="card-title mb-0"><?= $totalClients ?></h5><p class="text-muted small mb-0">Clients</p></div>
+                    <i class="fas fa-user-tie fa-2x text-info opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php else: ?>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div><h5 class="card-title mb-0"><?= $totalClients ?></h5><p class="text-muted small mb-0">Clients</p></div>
+                    <i class="fas fa-user-tie fa-2x text-info opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
     <?php endif; ?>
-
     <div class="col-md-3">
         <div class="card stat-card blue">
             <div class="card-body">
@@ -80,17 +112,8 @@ if (Auth::isAdmin()) {
 </div>
 
 <?php if (!Auth::isAdmin()): ?>
+<!-- User-only stats -->
 <div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="card stat-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= $totalClients ?></h5><p class="text-muted small mb-0">Clients</p></div>
-                    <i class="fas fa-user-tie fa-2x text-info opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
     <div class="col-md-3">
         <div class="card stat-card">
             <div class="card-body">
@@ -112,8 +135,58 @@ if (Auth::isAdmin()) {
         </div>
     </div>
 </div>
+<?php endif; ?>
 
-<!-- Documents recents -->
+<!-- Posts & Annonces -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-newspaper me-2 text-info"></i> Posts</h6>
+                <?php if (Auth::isAdmin()): ?>
+                    <a href="<?= APP_URL ?>/?page=admin/annonces" class="btn btn-sm btn-outline-primary">Gérer</a>
+                <?php endif; ?>
+            </div>
+            <div class="card-body">
+                <?php if (empty($posts)): ?>
+                    <p class="text-muted text-center py-3 mb-0">Aucun post pour l'instant.</p>
+                <?php else: ?>
+                    <?php foreach ($posts as $p): ?>
+                        <a href="<?= APP_URL ?>/?page=annonces/view&id=<?= $p['id'] ?>" class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2 text-decoration-none text-dark">
+                            <span class="fw-semibold"><?= Helper::sanitize($p['titre']) ?></span>
+                            <small class="text-muted text-nowrap ms-3"><?= date('d/m/Y', strtotime($p['created_at'])) ?></small>
+                        </a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-bullhorn me-2 text-warning"></i> Annonces</h6>
+                <?php if (Auth::isAdmin()): ?>
+                    <a href="<?= APP_URL ?>/?page=admin/annonces" class="btn btn-sm btn-outline-primary">Gérer</a>
+                <?php endif; ?>
+            </div>
+            <div class="card-body">
+                <?php if (empty($annoncesList)): ?>
+                    <p class="text-muted text-center py-3 mb-0">Aucune annonce pour l'instant.</p>
+                <?php else: ?>
+                    <?php foreach ($annoncesList as $a): ?>
+                        <a href="<?= APP_URL ?>/?page=annonces/view&id=<?= $a['id'] ?>" class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2 text-decoration-none text-dark">
+                            <span class="fw-semibold"><?= Helper::sanitize($a['titre']) ?></span>
+                            <small class="text-muted text-nowrap ms-3"><?= date('d/m/Y', strtotime($a['created_at'])) ?></small>
+                        </a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php if (!Auth::isAdmin()): ?>
+<!-- Documents recents (User) -->
 <div class="card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h6 class="mb-0"><i class="fas fa-clock me-2"></i> Documents recents</h6>
@@ -129,7 +202,7 @@ if (Auth::isAdmin()) {
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead><tr><th>Type</th><th>Client</th><th>Date</th><th class="text-end">Total TTC</th><th>Statut</th></tr></thead>
+                    <thead><tr><th>Type</th><th>Client</th><th>Date</th><th class="text-end">Total HT</th><th>Statut</th></tr></thead>
                     <tbody>
                     <?php foreach ($recentDocs as $doc): ?>
                         <tr>
@@ -143,11 +216,9 @@ if (Auth::isAdmin()) {
                             </td>
                             <td><?= Helper::sanitize($doc['nom_client']) ?></td>
                             <td><?= date('d/m/Y', strtotime($doc['date_document'])) ?></td>
-                            <td class="text-end fw-semibold"><?= Helper::formatMoney($doc['total_ttc']) ?></td>
+                            <td class="text-end fw-semibold"><?= Helper::formatMoney($doc['total_ht'], $doc['devise'] ?? 'MAD') ?></td>
                             <td>
-                                <?php
-                                $badges = ['brouillon' => 'secondary', 'envoye' => 'info', 'paye' => 'success', 'annule' => 'danger'];
-                                ?>
+                                <?php $badges = ['brouillon' => 'secondary', 'envoye' => 'info', 'paye' => 'success', 'annule' => 'danger']; ?>
                                 <span class="badge bg-<?= $badges[$doc['statut']] ?? 'secondary' ?>">
                                     <?= ucfirst($doc['statut']) ?>
                                 </span>
@@ -161,26 +232,74 @@ if (Auth::isAdmin()) {
     </div>
 </div>
 <?php else: ?>
-<!-- Admin dashboard - recent users -->
-<div class="card mt-4">
-    <div class="card-header bg-white"><h6 class="mb-0"><i class="fas fa-users me-2"></i> Utilisateurs inscrits</h6></div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead><tr><th>Nom</th><th>Email</th><th>Ville</th><th>Date inscription</th></tr></thead>
-                <tbody>
+<!-- Admin : Utilisateurs + Derniers documents -->
+<div class="row g-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white"><h6 class="mb-0"><i class="fas fa-users me-2"></i> Utilisateurs (<?= $totalUsers ?>)</h6></div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead><tr><th>Nom</th><th>Email</th><th>Ville</th><th>Inscription</th></tr></thead>
+                        <tbody>
+                        <?php foreach ($allUsers as $u): ?>
+                            <tr>
+                                <td>
+                                    <?= Helper::sanitize($u['nom_complet']) ?>
+                                    <?php if ($u['role'] === 'admin'): ?>
+                                        <span class="badge bg-danger ms-1">Admin</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= Helper::sanitize($u['email']) ?></td>
+                                <td><?= Helper::sanitize($u['ville'] ?? '-') ?></td>
+                                <td><?= date('d/m/Y', strtotime($u['created_at'])) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i> Derniers documents</h6>
+                <a href="<?= APP_URL ?>/?page=documents" class="btn btn-sm btn-outline-primary">Voir tout</a>
+            </div>
+            <div class="card-body p-0">
                 <?php
-                $allUsers = (new User())->getAll();
-                foreach ($allUsers as $u): ?>
-                    <tr>
-                        <td><?= Helper::sanitize($u['nom_complet']) ?></td>
-                        <td><?= Helper::sanitize($u['email']) ?></td>
-                        <td><?= Helper::sanitize($u['ville'] ?? '-') ?></td>
-                        <td><?= date('d/m/Y', strtotime($u['created_at'])) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                </tbody>
-            </table>
+                $recentDocsAll = $docModel->getAll();
+                array_splice($recentDocsAll, 5);
+                ?>
+                <?php if (empty($recentDocsAll)): ?>
+                    <p class="text-muted text-center py-4 mb-0">Aucun document.</p>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th>Type</th><th>Client</th><th>Date</th><th class="text-end">Total HT</th></tr></thead>
+                            <tbody>
+                            <?php foreach ($recentDocsAll as $doc): ?>
+                                <tr>
+                                    <td>
+                                        <?php
+                                        $labels = ['devis' => 'Devis', 'facture' => 'Facture', 'bon_livraison' => 'Bon livr.'];
+                                        $colors = ['devis' => 'primary', 'facture' => 'success', 'bon_livraison' => 'warning'];
+                                        ?>
+                                        <span class="badge bg-<?= $colors[$doc['type_document']] ?? 'secondary' ?>">
+                                            <?= $labels[$doc['type_document']] ?? '' ?>
+                                        </span>
+                                    </td>
+                                    <td><?= Helper::sanitize($doc['nom_client']) ?></td>
+                                    <td><?= date('d/m/Y', strtotime($doc['date_document'])) ?></td>
+                                    <td class="text-end fw-semibold"><?= Helper::formatMoney($doc['total_ht'], $doc['devise'] ?? 'MAD') ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </div>

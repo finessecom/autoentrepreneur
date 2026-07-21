@@ -41,6 +41,10 @@ $_isActive = function($key) use ($_currentPage) {
            class="list-group-item list-group-item-action bg-dark text-white border-0 <?= $_isActive('admin') ?>">
             <i class="fas fa-cog me-2"></i> Administration
         </a>
+        <a href="<?= APP_URL ?>/?page=admin/annonces"
+           class="list-group-item list-group-item-action bg-dark text-white border-0 <?= $_isActive('admin/annonces') ?>">
+            <i class="fas fa-bullhorn me-2"></i> Annonces & Posts
+        </a>
         <?php endif; ?>
     </div>
 </div>

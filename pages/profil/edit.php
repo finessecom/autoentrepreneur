@@ -6,8 +6,6 @@ $userModel = new User();
 $user = $userModel->getById(Auth::userId());
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $data = $_POST;
-
     // Handle signature upload
     if (!empty($_FILES['signature']['tmp_name'])) {
         $ext = pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION);
@@ -18,6 +16,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Handle signature delete
+    if (isset($_POST['delete_signature'])) {
+        if (!empty($user['signature_url']) && file_exists(__DIR__ . '/../../' . $user['signature_url'])) {
+            unlink(__DIR__ . '/../../' . $user['signature_url']);
+        }
+        $userModel->updateSignature(Auth::userId(), null);
+    }
+
     // Handle logo upload
     if (!empty($_FILES['logo_pdf']['tmp_name'])) {
         $ext = pathinfo($_FILES['logo_pdf']['name'], PATHINFO_EXTENSION);
@@ -26,6 +32,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (move_uploaded_file($_FILES['logo_pdf']['tmp_name'], $dest)) {
             $userModel->updateLogo(Auth::userId(), 'uploads/logos/' . $filename);
         }
+    }
+
+    // Handle logo delete
+    if (isset($_POST['delete_logo'])) {
+        if (!empty($user['logo_pdf_url']) && file_exists(__DIR__ . '/../../' . $user['logo_pdf_url'])) {
+            unlink(__DIR__ . '/../../' . $user['logo_pdf_url']);
+        }
+        $userModel->updateLogo(Auth::userId(), null);
     }
 
     // Handle password change
@@ -41,9 +55,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Build data array from explicit fields only
+    $fields = [
+        'nom_complet', 'nom_affichage', 'titre_pro', 'titre_pro_ar', 'ville',
+        'langue_principale', 'bio', 'bio_ar', 'whatsapp', 'telephone',
+        'site_web', 'mots_cles', 'raison_sociale', 'email_pro',
+        'ice', 'identifiant_fiscal', 'nom_banque', 'rib', 'taxe_professionnelle',
+        'signature_taille', 'prefixe_devis', 'prefixe_facture', 'prefixe_livraison'
+    ];
+    $data = [];
+    foreach ($fields as $field) {
+        if (isset($_POST[$field]) && is_string($_POST[$field])) {
+            $data[$field] = $_POST[$field];
+        }
+    }
+
     // Handle social networks
     $reseaux = [];
-    if (!empty($_POST['social_platform']) && !empty($_POST['social_url'])) {
+    if (!empty($_POST['social_platform']) && is_array($_POST['social_platform'])) {
         foreach ($_POST['social_platform'] as $i => $platform) {
             if (!empty($platform) && !empty($_POST['social_url'][$i])) {
                 $reseaux[$platform] = $_POST['social_url'][$i];
@@ -51,9 +80,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     $data['reseaux_sociaux'] = $reseaux;
-
-    unset($data['new_password'], $data['confirm_password'], $data['current_password']);
-    unset($data['social_platform'], $data['social_url']);
 
     $userModel->update(Auth::userId(), $data);
     Helper::setSuccess('Profil mis à jour.');
@@ -120,14 +146,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label class="form-label">Mots-clés (séparés par virgule)</label>
                             <input type="text" name="mots_cles" class="form-control" value="<?= Helper::sanitize($user['mots_cles'] ?? '') ?>">
                         </div>
-                        <div class="col-12">
-                            <label class="form-label">Bio (FR)</label>
-                            <textarea name="bio" class="form-control" rows="3"><?= Helper::sanitize($user['bio'] ?? '') ?></textarea>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Bio (AR)</label>
-                            <textarea name="bio_ar" class="form-control" rows="3" dir="rtl"><?= Helper::sanitize($user['bio_ar'] ?? '') ?></textarea>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -154,10 +172,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <input type="text" name="identifiant_fiscal" class="form-control" value="<?= Helper::sanitize($user['identifiant_fiscal'] ?? '') ?>">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">CNIE</label>
-                            <input type="text" name="cnie" class="form-control" value="<?= Helper::sanitize($user['cnie'] ?? '') ?>">
+                            <label class="form-label">Nom de la banque</label>
+                            <input type="text" name="nom_banque" class="form-control" value="<?= Helper::sanitize($user['nom_banque'] ?? '') ?>" placeholder="Ex: Attijariwafa Bank">
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label">RIB</label>
+                            <input type="text" name="rib" class="form-control" value="<?= Helper::sanitize($user['rib'] ?? '') ?>" placeholder="007 780 0001234567890123 45">
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label">Taxe professionnelle</label>
                             <input type="text" name="taxe_professionnelle" class="form-control" value="<?= Helper::sanitize($user['taxe_professionnelle'] ?? '') ?>">
                         </div>
@@ -231,14 +253,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div class="mb-3">
                         <label class="form-label">Logo (pour PDF)</label>
                         <?php if (!empty($user['logo_pdf_url'])): ?>
-                            <div class="mb-2"><img src="<?= APP_URL . '/' . $user['logo_pdf_url'] ?>" alt="Logo" style="max-height:60px;"></div>
+                            <div class="mb-2 d-flex align-items-center gap-2">
+                                <img src="<?= APP_URL . '/' . $user['logo_pdf_url'] ?>" alt="Logo" style="max-height:60px;">
+                                <button type="submit" name="delete_logo" value="1" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Supprimer le logo ?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         <?php endif; ?>
                         <input type="file" name="logo_pdf" class="form-control" accept="image/*">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Signature</label>
                         <?php if (!empty($user['signature_url'])): ?>
-                            <div class="mb-2"><img src="<?= APP_URL . '/' . $user['signature_url'] ?>" alt="Signature" style="max-height:60px;"></div>
+                            <div class="mb-2 d-flex align-items-center gap-2">
+                                <img src="<?= APP_URL . '/' . $user['signature_url'] ?>" alt="Signature" style="max-height:60px;">
+                                <button type="submit" name="delete_signature" value="1" class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Supprimer la signature ?')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         <?php endif; ?>
                         <input type="file" name="signature" class="form-control" accept="image/*">
                     </div>

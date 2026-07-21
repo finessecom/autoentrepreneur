@@ -1,9 +1,11 @@
 <?php
-session_start();
+require_once __DIR__ . '/../config/security.php';
 require_once __DIR__ . '/../config/app.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../src/Helper.php';
 require_once __DIR__ . '/../src/Auth.php';
+
+set_security_headers();
 
 if (isset($_SESSION['user_id'])) {
     Helper::redirect(APP_URL . '/?page=dashboard');
@@ -12,17 +14,23 @@ if (isset($_SESSION['user_id'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $password = $_POST['password'] ?? '';
+    verify_csrf_token();
 
-    if (empty($email) || empty($password)) {
-        $error = 'Veuillez remplir tous les champs.';
+    if (!check_rate_limit('login', 5, 300)) {
+        $error = 'Trop de tentatives. Réessayez dans 5 minutes.';
     } else {
-        $auth = new Auth();
-        if ($auth->login($email, $password)) {
-            Helper::redirect(APP_URL . '/?page=dashboard');
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if (empty($email) || empty($password)) {
+            $error = 'Veuillez remplir tous les champs.';
         } else {
-            $error = Helper::getError() ?? 'Identifiants incorrects.';
+            $auth = new Auth();
+            if ($auth->login($email, $password)) {
+                Helper::redirect(APP_URL . '/?page=dashboard');
+            } else {
+                $error = Helper::getError() ?? 'Identifiants incorrects.';
+            }
         }
     }
 }
@@ -56,6 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <form method="POST">
+                    <?= csrf_field() ?>
                     <div class="mb-3">
                         <label class="form-label">Email</label>
                         <div class="input-group">

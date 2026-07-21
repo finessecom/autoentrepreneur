@@ -57,7 +57,7 @@ $documents = $docModel->getByUser(Auth::userId(), $type, $search);
                             <th>Type</th>
                             <th>Client</th>
                             <th>Date</th>
-                            <th class="text-end">Total TTC</th>
+                            <th class="text-end">Total HT</th>
                             <th>Statut</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -77,7 +77,7 @@ $documents = $docModel->getByUser(Auth::userId(), $type, $search);
                             </td>
                             <td><?= Helper::sanitize($doc['nom_client']) ?></td>
                             <td><?= date('d/m/Y', strtotime($doc['date_document'])) ?></td>
-                            <td class="text-end fw-semibold"><?= Helper::formatMoney($doc['total_ttc']) ?></td>
+                            <td class="text-end fw-semibold"><?= Helper::formatMoney($doc['total_ht'], $doc['devise'] ?? 'MAD') ?></td>
                             <td>
                                 <?php
                                 $badges = ['brouillon' => 'secondary', 'envoye' => 'info', 'paye' => 'success', 'annule' => 'danger'];
