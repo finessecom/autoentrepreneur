@@ -1,18 +1,23 @@
 <?php
 $pageTitle = 'Modifier profil';
-require_once __DIR__ . '/../../includes/header.php';
 
 $userModel = new User();
 $user = $userModel->getById(Auth::userId());
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     // Handle signature upload
     if (!empty($_FILES['signature']['tmp_name'])) {
-        $ext = pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION);
-        $filename = 'sig_' . Auth::userId() . '_' . time() . '.' . $ext;
-        $dest = SIGNATURE_DIR . $filename;
-        if (move_uploaded_file($_FILES['signature']['tmp_name'], $dest)) {
-            $userModel->updateSignature(Auth::userId(), 'uploads/signatures/' . $filename);
+        $error = Helper::validateUpload($_FILES['signature'], ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+        if ($error) {
+            Helper::setError($error);
+        } else {
+            $ext = strtolower(pathinfo($_FILES['signature']['name'], PATHINFO_EXTENSION));
+            $filename = 'sig_' . Auth::userId() . '_' . time() . '.' . $ext;
+            $dest = SIGNATURE_DIR . $filename;
+            if (move_uploaded_file($_FILES['signature']['tmp_name'], $dest)) {
+                $userModel->updateSignature(Auth::userId(), 'uploads/signatures/' . $filename);
+            }
         }
     }
 
@@ -26,11 +31,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Handle logo upload
     if (!empty($_FILES['logo_pdf']['tmp_name'])) {
-        $ext = pathinfo($_FILES['logo_pdf']['name'], PATHINFO_EXTENSION);
-        $filename = 'logo_' . Auth::userId() . '_' . time() . '.' . $ext;
-        $dest = LOGO_DIR . $filename;
-        if (move_uploaded_file($_FILES['logo_pdf']['tmp_name'], $dest)) {
-            $userModel->updateLogo(Auth::userId(), 'uploads/logos/' . $filename);
+        $error = Helper::validateUpload($_FILES['logo_pdf'], ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+        if ($error) {
+            Helper::setError($error);
+        } else {
+            $ext = strtolower(pathinfo($_FILES['logo_pdf']['name'], PATHINFO_EXTENSION));
+            $filename = 'logo_' . Auth::userId() . '_' . time() . '.' . $ext;
+            $dest = LOGO_DIR . $filename;
+            if (move_uploaded_file($_FILES['logo_pdf']['tmp_name'], $dest)) {
+                $userModel->updateLogo(Auth::userId(), 'uploads/logos/' . $filename);
+            }
         }
     }
 
@@ -43,13 +53,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Handle password change
+    $passwordError = false;
     if (!empty($_POST['new_password'])) {
         if ($_POST['new_password'] !== $_POST['confirm_password']) {
             Helper::setError('Les mots de passe ne correspondent pas.');
+            $passwordError = true;
         } elseif (strlen($_POST['new_password']) < 6) {
             Helper::setError('Le mot de passe doit contenir au moins 6 caractères.');
+            $passwordError = true;
         } elseif (!password_verify($_POST['current_password'], $user['password'])) {
             Helper::setError('Mot de passe actuel incorrect.');
+            $passwordError = true;
         } else {
             $userModel->updatePassword(Auth::userId(), $_POST['new_password']);
         }
@@ -82,9 +96,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data['reseaux_sociaux'] = $reseaux;
 
     $userModel->update(Auth::userId(), $data);
-    Helper::setSuccess('Profil mis à jour.');
+    if (!$passwordError) {
+        Helper::setSuccess('Profil mis à jour.');
+    }
     Helper::redirect(APP_URL . '/?page=profil');
 }
+
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -95,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <form method="POST" enctype="multipart/form-data">
+    <?= csrf_field() ?>
     <div class="row g-4">
         <div class="col-md-8">
             <!-- Infos personnelles -->
@@ -302,26 +321,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div>
                         <label class="form-label">Confirmer</label>
                         <input type="password" name="confirm_password" class="form-control">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Préfixes documents -->
-            <div class="card mb-4">
-                <div class="card-header bg-white"><h6 class="mb-0">Préfixes des documents</h6></div>
-                <div class="card-body">
-                    <p class="text-muted small mb-3">Les numéros seront générés automatiquement (ex: DEV-0001).</p>
-                    <div class="mb-3">
-                        <label class="form-label">Préfixe Devis</label>
-                        <input type="text" name="prefixe_devis" class="form-control" maxlength="10" value="<?= Helper::sanitize($user['prefixe_devis'] ?? 'DEV') ?>">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Préfixe Facture</label>
-                        <input type="text" name="prefixe_facture" class="form-control" maxlength="10" value="<?= Helper::sanitize($user['prefixe_facture'] ?? 'FAC') ?>">
-                    </div>
-                    <div>
-                        <label class="form-label">Préfixe Bon de livraison</label>
-                        <input type="text" name="prefixe_livraison" class="form-control" maxlength="10" value="<?= Helper::sanitize($user['prefixe_livraison'] ?? 'BL') ?>">
                     </div>
                 </div>
             </div>

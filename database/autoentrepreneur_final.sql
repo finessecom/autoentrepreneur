@@ -22,6 +22,8 @@ CREATE TABLE users (
     titre_pro_ar VARCHAR(100),
     ville VARCHAR(100),
     langue_principale VARCHAR(50) DEFAULT 'Français',
+    bio TEXT,
+    bio_ar TEXT,
     whatsapp VARCHAR(20),
     telephone VARCHAR(20),
     email VARCHAR(150) UNIQUE NOT NULL,
@@ -33,6 +35,7 @@ CREATE TABLE users (
     email_pro VARCHAR(150),
     ice VARCHAR(20),
     identifiant_fiscal VARCHAR(20),
+    cnie VARCHAR(20),
     nom_banque VARCHAR(150),
     rib VARCHAR(50),
     taxe_professionnelle VARCHAR(20),
@@ -58,6 +61,8 @@ CREATE TABLE clients (
     telephone VARCHAR(20),
     adresse TEXT,
     devise VARCHAR(10) DEFAULT 'MAD',
+    date_echance DATE NULL,
+    montant DECIMAL(10, 2) NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -95,6 +100,11 @@ CREATE TABLE documents (
     decl_trimestre TINYINT NULL,
     decl_annee YEAR NULL,
     decl_total DECIMAL(10, 2) NULL,
+    date_paiement DATE NULL,
+    montant_paiement DECIMAL(10, 2) NULL,
+    mode_paiement VARCHAR(50) NULL,
+    motif_annulation VARCHAR(255) NULL,
+    date_annulation DATETIME NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
@@ -153,6 +163,36 @@ CREATE TABLE annonces (
     titre VARCHAR(255) NOT NULL,
     texte TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- 8. Table des charges
+-- =====================================================
+CREATE TABLE charges (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    date_charge DATE NOT NULL,
+    designation VARCHAR(255) NOT NULL,
+    montant_eur DECIMAL(10, 2) DEFAULT 0.00,
+    montant_mad DECIMAL(10, 2) DEFAULT 0.00,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- 9. Table des échanges clients (journal CRM)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS client_echanges (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    client_id INT NOT NULL,
+    user_id INT NOT NULL,
+    date_echange DATE NOT NULL,
+    titre VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    document_url VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

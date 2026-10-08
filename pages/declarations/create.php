@@ -1,6 +1,5 @@
 <?php
 $pageTitle = 'Simulateur de declaration';
-require_once __DIR__ . '/../../includes/header.php';
 
 $declModel = new Declaration();
 $docModel = new Document();
@@ -47,6 +46,7 @@ for ($t = 1; $t <= 4; $t++) {
 $d = $cardData[$currentTrimestre];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $annee = (int)$_POST['annee'];
     $trimestre = (int)$_POST['trimestre'];
     $caCommerce = (float)$_POST['ca_commerce'];
@@ -76,6 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Helper::redirect(APP_URL . '/?page=declarations&year=' . $annee);
     }
 }
+
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <!-- BLOC 1 : Sélection -->
@@ -234,6 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!-- BLOC 4 : Déclaration -->
 <form method="POST" id="formDeclaration">
+    <?= csrf_field() ?>
     <input type="hidden" name="annee" id="formAnnee" value="<?= $year ?>">
     <input type="hidden" name="trimestre" id="formTrimestre" value="<?= $currentTrimestre ?>">
     <input type="hidden" name="ca_commerce" id="formCaCommerce" value="0">
@@ -294,8 +297,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <option value="">-- Non défini --</option>
                             <option value="especes">Espèces</option>
                             <option value="virement">Virement</option>
-                            <option value="cheque">Chèque</option>
-                            <option value="cnss">CNSS</option>
+                            <option value="cashplus">Cashplus</option>
+                            <option value="taptapsend">TapTapSend</option>
+                            <option value="autre">Autres</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -345,11 +349,6 @@ const CNSS_MONTANTS = {T0:0,T1:300,T2:390,T3:570,T4:720,T5:1050,T6:1500,T7:2250,
 const CARD_DATA = <?= json_encode($cardData) ?>;
 const INVOICES_DATA = <?= json_encode($invoicesByTrim) ?>;
 
-function calcIR(caHT, activite) {
-    if (activite === 'service') return caHT * 0.01;
-    if (activite === 'commerce') return caHT * 0.02;
-    return caHT * 0.01; // défaut service
-}
 
 function getSumFactures(trim) {
     const inv = INVOICES_DATA[trim] || [];
@@ -402,6 +401,15 @@ function updateCards(trim) {
     document.getElementById('caDeclare').textContent = caDeclare.toFixed(2) + ' MAD';
     document.getElementById('caDeclareValue').value = caDeclare;
 
+    // Mettre à jour les champs cachés pour le formulaire
+    if (activite === 'commerce') {
+        document.getElementById('formCaCommerce').value = sumFactures;
+        document.getElementById('formCaService').value = 0;
+    } else {
+        document.getElementById('formCaCommerce').value = 0;
+        document.getElementById('formCaService').value = sumFactures;
+    }
+
     calcTotalPaye();
     syncTranche(document.getElementById('cnssTrancheCard').value);
     document.getElementById('formAnnee').value = document.getElementById('selectAnnee').value;
@@ -426,6 +434,7 @@ function calcPenalitesFrais() {
     document.getElementById('totalPenalitesGlobal').textContent = totalPF.toFixed(2) + ' MAD';
 
     const trim = parseInt(document.getElementById('selectTrimestre').value);
+    const activite = document.getElementById('selectActivite').value;
     const cnss = CNSS_MONTANTS[document.getElementById('cnssTrancheCard').value] || 0;
     const sumFactures = getSumFactures(trim);
     const total = sumFactures + cnss + totalPF;
@@ -435,14 +444,25 @@ function calcPenalitesFrais() {
     document.getElementById('caDeclare').textContent = total.toFixed(2) + ' MAD';
     document.getElementById('caDeclareValue').value = total;
 
+    // Mettre à jour les champs cachés pour le formulaire
+    if (activite === 'commerce') {
+        document.getElementById('formCaCommerce').value = sumFactures;
+        document.getElementById('formCaService').value = 0;
+    } else {
+        document.getElementById('formCaCommerce').value = 0;
+        document.getElementById('formCaService').value = sumFactures;
+    }
+    document.getElementById('formRas').value = 0;
+
     calcTotalPaye();
 }
 
 function calcTotalPaye() {
     const activite = document.getElementById('selectActivite').value;
-    const caDeclare = parseFloat(document.getElementById('caDeclareValue').value) || 0;
-    const taux = activite === 'commerce' ? 0.02 : 0.01;
-    const totalPaye = caDeclare * taux;
+    const trim = parseInt(document.getElementById('selectTrimestre').value);
+    const sumFactures = getSumFactures(trim);
+    const taux = activite === 'commerce' ? 0.005 : 0.01;
+    const totalPaye = sumFactures * taux;
     document.getElementById('totalPayeCard').textContent = totalPaye.toFixed(2) + ' MAD';
     document.getElementById('tauxInfo').textContent = 'Taux applicable : ' + (taux * 100) + '% (' + (activite === 'commerce' ? 'Produits/Commerce' : 'Services') + ')';
 }

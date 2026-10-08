@@ -1,6 +1,5 @@
 <?php
 $pageTitle = 'Modifier document';
-require_once __DIR__ . '/../../includes/header.php';
 
 $docModel = new Document();
 $clientModel = new Client();
@@ -15,18 +14,15 @@ if (!$doc || $doc['statut'] !== 'brouillon') {
 }
 
 $items = $docModel->getItems($id);
-$clients = $clientModel->getByUser(Auth::userId());
-$produits = $prodModel->getByUser(Auth::userId());
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $clientModel = new Client();
-    $clientData = $clientModel->getById((int)$_POST['client_id'], Auth::userId());
+    verify_csrf_token();
     $data = [
         'client_id'     => (int)$_POST['client_id'],
         'type_document' => $_POST['type_document'],
         'date_document' => $_POST['date_document'],
         'statut'        => $_POST['statut'] ?? 'brouillon',
-        'devise'        => $clientData['devise'] ?? 'MAD',
+        'devise'        => $_POST['devise'] ?? 'MAD',
     ];
 
     $newItems = [];
@@ -51,6 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Helper::redirect(APP_URL . '/?page=documents/view&id=' . $id);
     }
 }
+
+require_once __DIR__ . '/../../includes/header.php';
+
+$clients = $clientModel->getByUser(Auth::userId());
+$produits = $prodModel->getByUser(Auth::userId());
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -61,13 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <form method="POST">
+    <?= csrf_field() ?>
     <div class="card mb-4">
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Type</label>
                     <select name="type_document" class="form-select" required>
-                        <?php foreach (['devis' => 'Devis', 'facture' => 'Facture', 'bon_livraison' => 'Bon de livraison'] as $val => $label): ?>
+                        <?php foreach (['devis' => 'Devis', 'facture' => 'Facture'] as $val => $label): ?>
                             <option value="<?= $val ?>" <?= $doc['type_document'] === $val ? 'selected' : '' ?>><?= $label ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -79,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="col-md-3">
                     <label class="form-label">Statut</label>
                     <select name="statut" class="form-select">
-                        <?php foreach (['brouillon' => 'Brouillon', 'envoye' => 'Envoyé', 'paye' => 'Payé', 'annule' => 'Annulé'] as $val => $label): ?>
+                        <?php foreach (['brouillon' => 'Brouillon', 'envoye' => 'Envoyé', 'paye' => 'Payé'] as $val => $label): ?>
                             <option value="<?= $val ?>" <?= $doc['statut'] === $val ? 'selected' : '' ?>><?= $label ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -89,6 +91,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <select name="client_id" class="form-select" required>
                         <?php foreach ($clients as $c): ?>
                             <option value="<?= $c['id'] ?>" <?= $doc['client_id'] == $c['id'] ? 'selected' : '' ?>><?= Helper::sanitize($c['nom_client']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Devise</label>
+                    <select name="devise" class="form-select" required id="docDevise">
+                        <?php foreach (['MAD' => 'MAD - Dirham', 'EUR' => 'EUR - Euro', 'USD' => 'USD - Dollar', 'GBP' => 'GBP - Livre'] as $val => $label): ?>
+                            <option value="<?= $val ?>" <?= ($doc['devise'] ?? 'MAD') === $val ? 'selected' : '' ?>><?= $label ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -108,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <table class="table" id="itemsTable">
                     <thead><tr><th>Désignation</th><th>Produit</th><th>Détail</th><th>Qté</th><th>Prix</th><th>Total</th><th></th></tr></thead>
                     <tbody id="itemsBody"></tbody>
-                    <tfoot><tr class="table-active"><td colspan="4" class="text-end fw-bold">Total HT :</td><td id="totalHT" class="fw-bold">0.00 MAD</td><td></td></tr></tfoot>
+                    <tfoot><tr class="table-active"><td colspan="4" class="text-end fw-bold">Total HT :</td><td id="totalHT" class="fw-bold">0.00 <?= $doc['devise'] ?? 'MAD' ?></td><td></td></tr></tfoot>
                 </table>
             </div>
         </div>
@@ -160,10 +170,30 @@ function calcTotal(el) {
     row.querySelector('.total-ligne').textContent = (qte * prix).toFixed(2);
     let grand = 0;
     document.querySelectorAll('.total-ligne').forEach(td => grand += parseFloat(td.textContent) || 0);
-    document.getElementById('totalHT').textContent = grand.toFixed(2) + ' MAD';
+    const devise = document.getElementById('docDevise').value;
+    document.getElementById('totalHT').textContent = grand.toFixed(2) + ' ' + devise;
 }
 
-function removeLine(btn) { btn.closest('tr').remove(); }
+document.getElementById('docDevise').addEventListener('change', function() {
+    const firstRow = document.querySelector('#itemsBody tr');
+    if (firstRow) {
+        calcTotal(firstRow.querySelector('input[name="item_prix[]"]'));
+    } else {
+        const devise = this.value;
+        document.getElementById('totalHT').textContent = '0.00 ' + devise;
+    }
+});
+
+function removeLine(btn) {
+    btn.closest('tr').remove();
+    const firstInput = document.querySelector('#itemsBody tr input[name="item_prix[]"]');
+    if (firstInput) {
+        calcTotal(firstInput);
+    } else {
+        const devise = document.getElementById('docDevise').value;
+        document.getElementById('totalHT').textContent = '0.00 ' + devise;
+    }
+}
 
 existingItems.forEach(item => addLine(item.designation, item.produit_service_id, item.detail || '', item.quantite, item.prix_unitaire));
 </script>

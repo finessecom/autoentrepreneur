@@ -1,22 +1,18 @@
 <?php
 $pageTitle = 'Nouveau document';
-require_once __DIR__ . '/../../includes/header.php';
 
 $clientModel = new Client();
 $prodModel = new ProduitService();
 $docModel = new Document();
 
-$clients = $clientModel->getByUser(Auth::userId());
-$produits = $prodModel->getByUser(Auth::userId());
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $clientData = $clientModel->getById((int)$_POST['client_id'], Auth::userId());
+    verify_csrf_token();
     $data = [
         'client_id'     => (int)$_POST['client_id'],
         'type_document' => $_POST['type_document'],
         'date_document' => $_POST['date_document'],
         'statut'        => $_POST['statut'] ?? 'brouillon',
-        'devise'        => $clientData['devise'] ?? 'MAD',
+        'devise'        => $_POST['devise'] ?? 'MAD',
     ];
 
     $items = [];
@@ -43,6 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
+require_once __DIR__ . '/../../includes/header.php';
+
+$clients = $clientModel->getByUser(Auth::userId());
+$produits = $prodModel->getByUser(Auth::userId());
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -53,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <form method="POST" id="docForm">
+    <?= csrf_field() ?>
     <div class="card mb-4">
         <div class="card-header bg-white"><h6 class="mb-0">Informations générales</h6></div>
         <div class="card-body">
@@ -62,7 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <select name="type_document" class="form-select" required>
                         <option value="devis">Devis</option>
                         <option value="facture">Facture</option>
-                        <option value="bon_livraison">Bon de livraison</option>
                     </select>
                 </div>
                 <div class="col-md-3">
@@ -83,6 +84,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php foreach ($clients as $c): ?>
                             <option value="<?= $c['id'] ?>"><?= Helper::sanitize($c['nom_client']) ?></option>
                         <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Devise *</label>
+                    <select name="devise" class="form-select" required id="docDevise">
+                        <option value="MAD">MAD - Dirham</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="USD">USD - Dollar</option>
+                        <option value="GBP">GBP - Livre</option>
                     </select>
                 </div>
             </div>
@@ -179,8 +189,19 @@ function calcTotal(el) {
     document.querySelectorAll('.total-ligne').forEach(td => {
         grand += parseFloat(td.textContent) || 0;
     });
-    document.getElementById('totalHT').textContent = grand.toFixed(2) + ' MAD';
+    const devise = document.getElementById('docDevise').value;
+    document.getElementById('totalHT').textContent = grand.toFixed(2) + ' ' + devise;
 }
+
+document.getElementById('docDevise').addEventListener('change', function() {
+    const firstRow = document.querySelector('#itemsBody tr');
+    if (firstRow) {
+        calcTotal(firstRow.querySelector('input[name="item_prix[]"]'));
+    } else {
+        const devise = this.value;
+        document.getElementById('totalHT').textContent = '0.00 ' + devise;
+    }
+});
 
 function removeLine(btn) {
     btn.closest('tr').remove();

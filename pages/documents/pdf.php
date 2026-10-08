@@ -26,7 +26,7 @@ $user = $userModel->getById(Auth::userId());
 $pdfContent = PDFGenerator::generate($doc, $items, $user);
 
 header('Content-Type: application/pdf');
-header('Content-Disposition: inline; filename="' . $doc['type_document'] . '_' . $doc['id'] . '.pdf"');
+header('Content-Disposition: inline; filename="' . $doc['numero'] . '.pdf"');
 header('Content-Length: ' . strlen($pdfContent));
 echo $pdfContent;
 exit;

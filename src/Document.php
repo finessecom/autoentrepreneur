@@ -12,23 +12,27 @@ class Document {
             'facture'       => 'prefixe_facture',
             'bon_livraison' => 'prefixe_livraison',
         ];
-        $col = $prefixMap[$typeDocument] ?? 'DEV';
+        $col = $prefixMap[$typeDocument] ?? 'prefixe_devis';
 
         $stmt = $this->db->prepare("SELECT {$col} FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $prefix = $stmt->fetchColumn() ?: 'DEV';
 
+        $annee = date('Y');
+
         $stmt = $this->db->prepare(
-            'SELECT COUNT(*) FROM documents WHERE user_id = ? AND type_document = ?'
+            'SELECT COUNT(*) FROM documents WHERE user_id = ? AND type_document = ? AND YEAR(date_document) = ?'
         );
-        $stmt->execute([$userId, $typeDocument]);
+        $stmt->execute([$userId, $typeDocument, $annee]);
         $next = (int) $stmt->fetchColumn() + 1;
 
-        return $prefix . '-' . str_pad($next, 4, '0', STR_PAD_LEFT);
+        return $prefix . '-' . $annee . '-' . str_pad($next, 4, '0', STR_PAD_LEFT);
     }
 
     public function getByUser(int $userId, string $type = '', string $search = ''): array {
-        $sql = 'SELECT d.*, c.nom_client FROM documents d JOIN clients c ON d.client_id = c.id WHERE d.user_id = ?';
+        $sql = 'SELECT d.*, c.nom_client,
+                (SELECT di.designation FROM document_items di WHERE di.document_id = d.id ORDER BY di.id LIMIT 1) AS premiere_designation
+                FROM documents d JOIN clients c ON d.client_id = c.id WHERE d.user_id = ?';
         $params = [$userId];
 
         if ($type && in_array($type, ['devis', 'facture', 'bon_livraison'])) {
@@ -55,6 +59,14 @@ class Document {
         );
         $stmt->execute([$id, $userId]);
         return $stmt->fetch() ?: null;
+    }
+
+    public function getByClientId(int $clientId, int $userId): array {
+        $stmt = $this->db->prepare(
+            'SELECT d.*, c.nom_client FROM documents d JOIN clients c ON d.client_id = c.id WHERE d.client_id = ? AND d.user_id = ? ORDER BY d.date_document DESC'
+        );
+        $stmt->execute([$clientId, $userId]);
+        return $stmt->fetchAll();
     }
 
     public function getItems(int $documentId): array {
@@ -168,18 +180,40 @@ class Document {
         return $stmt->execute([$statut, $id, $userId]);
     }
 
+    public function annuler(int $id, int $userId, string $motif): bool {
+        $stmt = $this->db->prepare(
+            'UPDATE documents SET statut = "annule", motif_annulation = ?, date_annulation = NOW()
+             WHERE id = ? AND user_id = ? AND statut != "paye" AND statut != "annule"'
+        );
+        $stmt->execute([$motif, $id, $userId]);
+        return $stmt->rowCount() > 0;
+    }
+
+    public function updateMotifAnnulation(int $id, int $userId, string $motif): bool {
+        $stmt = $this->db->prepare(
+            'UPDATE documents SET motif_annulation = ? WHERE id = ? AND user_id = ? AND statut = "annule"'
+        );
+        $stmt->execute([$motif, $id, $userId]);
+        return $stmt->rowCount() > 0;
+    }
+
     public function updateDeclaration(int $id, int $userId, ?int $trimestre, ?int $annee, ?float $total = null): bool {
         $stmt = $this->db->prepare('UPDATE documents SET decl_trimestre = ?, decl_annee = ?, decl_total = ? WHERE id = ? AND user_id = ?');
         return $stmt->execute([$trimestre, $annee, $total, $id, $userId]);
     }
 
+    public function updatePaiement(int $id, int $userId, ?string $datePaiement, ?float $montant, ?string $mode): bool {
+        $stmt = $this->db->prepare('UPDATE documents SET date_paiement = ?, montant_paiement = ?, mode_paiement = ? WHERE id = ? AND user_id = ?');
+        return $stmt->execute([$datePaiement, $montant, $mode, $id, $userId]);
+    }
+
     public function getSumByDeclaration(int $userId, int $annee, int $trimestre): array {
         $stmt = $this->db->prepare(
-            'SELECT type_activite, SUM(COALESCE(decl_total, total_ht)) AS total FROM documents d
+            'SELECT ps.type_activite, SUM(di.total_ligne) AS total FROM documents d
              JOIN document_items di ON di.document_id = d.id
              JOIN produits_services ps ON ps.id = di.produit_service_id
              WHERE d.user_id = ? AND d.decl_annee = ? AND d.decl_trimestre = ? AND d.statut = "paye" AND d.devise = "MAD"
-             GROUP BY type_activite'
+             GROUP BY ps.type_activite'
         );
         $stmt->execute([$userId, $annee, $trimestre]);
         $result = ['commerce' => 0, 'service' => 0];
@@ -212,13 +246,13 @@ class Document {
     }
 
     public function totalCA(int $userId): float {
-        $stmt = $this->db->prepare('SELECT COALESCE(SUM(total_ht), 0) FROM documents WHERE user_id = ? AND type_document = "facture" AND statut != "annule"');
+        $stmt = $this->db->prepare('SELECT COALESCE(SUM(COALESCE(montant_paiement, total_ht)), 0) FROM documents WHERE user_id = ? AND type_document = "facture" AND statut != "annule"');
         $stmt->execute([$userId]);
         return (float) $stmt->fetchColumn();
     }
 
     public function countByType(int $userId): array {
-        $stmt = $this->db->prepare('SELECT type_document, COUNT(*) as nb FROM documents WHERE user_id = ? GROUP BY type_document');
+        $stmt = $this->db->prepare('SELECT type_document, COUNT(*) as nb FROM documents WHERE user_id = ? AND statut != "annule" GROUP BY type_document');
         $stmt->execute([$userId]);
         $result = ['devis' => 0, 'facture' => 0, 'bon_livraison' => 0];
         while ($row = $stmt->fetch()) {
@@ -237,11 +271,11 @@ class Document {
     }
 
     public function totalCAAll(): float {
-        return (float) $this->db->query('SELECT COALESCE(SUM(total_ht), 0) FROM documents WHERE type_document = "facture" AND statut != "annule"')->fetchColumn();
+        return (float) $this->db->query('SELECT COALESCE(SUM(COALESCE(montant_paiement, total_ht)), 0) FROM documents WHERE type_document = "facture" AND statut != "annule"')->fetchColumn();
     }
 
     public function countByTypeAll(): array {
-        $stmt = $this->db->query('SELECT type_document, COUNT(*) as nb FROM documents GROUP BY type_document');
+        $stmt = $this->db->query('SELECT type_document, COUNT(*) as nb FROM documents WHERE statut != "annule" GROUP BY type_document');
         $result = ['devis' => 0, 'facture' => 0, 'bon_livraison' => 0];
         while ($row = $stmt->fetch()) {
             $result[$row['type_document']] = (int) $row['nb'];

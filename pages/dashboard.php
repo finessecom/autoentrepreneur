@@ -8,6 +8,7 @@ $prodModel = new ProduitService();
 $declModel = new Declaration();
 $annonceModel = new Annonce();
 $userModel = new User();
+$chargeModel = new Charge();
 
 if (Auth::isAdmin()) {
     $totalUsers = $userModel->count();
@@ -15,7 +16,7 @@ if (Auth::isAdmin()) {
     $totalDocs = $docModel->countAll();
     $totalCA = $docModel->totalCAAll();
     $totalDeclarations = $declModel->countAll();
-    $allUsers = $userModel->getAll();
+    $statsUsers = $userModel->statsParUser();
     $totalClients = $clientModel->countAll();
     $totalProduits = $prodModel->countAll();
     $posts = $annonceModel->getByType('post');
@@ -33,103 +34,287 @@ if (Auth::isAdmin()) {
     $posts = $annonceModel->getByType('post');
     $annoncesList = $annonceModel->getByType('annonce');
 }
+
+$allClients = $clientModel->getByUser(Auth::userId());
+$caPrevisionnel = 0;
+foreach ($allClients as $c) {
+    $caPrevisionnel += $c['montant'] ?? 0;
+}
+
+$caRealise = $totalCA;
+$totalCharges = $chargeModel->totalMAD(Auth::userId());
+$resultat = $caPrevisionnel - $totalCharges;
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i> Tableau de bord</h4>
-    <?php if (Auth::isAdmin()): ?>
-    <a href="<?= APP_URL ?>/?page=admin/annonces" class="btn btn-primary btn-sm">
-        <i class="fas fa-bullhorn me-1"></i> Nouvelle annonce
-    </a>
-    <?php endif; ?>
+<div class="d-flex justify-content-between align-items-center page-header">
+    <h4 class="page-title">Tableau de bord</h4>
 </div>
 
-<!-- Stats Cards -->
-<div class="row g-4 mb-4">
-    <?php if (Auth::isAdmin()): ?>
-    <div class="col-md-3">
-        <div class="card stat-card blue">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= $totalUsers ?></h5><p class="text-muted small mb-0">Utilisateurs</p></div>
-                    <i class="fas fa-users fa-2x text-primary opacity-50"></i>
+<?php if (Auth::isAdmin()): ?>
+<!-- Stats Globaux -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="fas fa-chart-pie me-2 text-primary"></i> Stats Globaux</h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-6 col-md-4 col-xl">
+                <div class="card stat-card bg-primary-soft h-100">
+                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <div class="stat-label">Utilisateurs</div>
+                            <div class="stat-value"><?= $totalUsers ?></div>
+                        </div>
+                        <div class="stat-icon primary">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stat-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= $totalClients ?></h5><p class="text-muted small mb-0">Clients</p></div>
-                    <i class="fas fa-user-tie fa-2x text-info opacity-50"></i>
+            <div class="col-6 col-md-4 col-xl">
+                <div class="card stat-card bg-info-soft h-100">
+                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <div class="stat-label">Clients</div>
+                            <div class="stat-value"><?= $totalClients ?></div>
+                        </div>
+                        <div class="stat-icon info">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-    <?php else: ?>
-    <div class="col-md-3">
-        <div class="card stat-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= $totalClients ?></h5><p class="text-muted small mb-0">Clients</p></div>
-                    <i class="fas fa-user-tie fa-2x text-info opacity-50"></i>
+            <div class="col-6 col-md-4 col-xl">
+                <div class="card stat-card bg-warning-soft h-100">
+                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <div class="stat-label">Devis</div>
+                            <div class="stat-value"><?= $docStats['devis'] ?></div>
+                        </div>
+                        <div class="stat-icon warning">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-    <?php endif; ?>
-    <div class="col-md-3">
-        <div class="card stat-card blue">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= $docStats['devis'] ?></h5><p class="text-muted small mb-0">Devis</p></div>
-                    <i class="fas fa-file-alt fa-2x text-primary opacity-50"></i>
+            <div class="col-6 col-md-4 col-xl">
+                <div class="card stat-card bg-danger-soft h-100">
+                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <div class="stat-label">Factures</div>
+                            <div class="stat-value"><?= $docStats['facture'] ?></div>
+                        </div>
+                        <div class="stat-icon danger">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stat-card green">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= $docStats['facture'] ?></h5><p class="text-muted small mb-0">Factures</p></div>
-                    <i class="fas fa-file-invoice-dollar fa-2x text-success opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stat-card orange">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= Helper::formatMoney($totalCA) ?></h5><p class="text-muted small mb-0">CA Total</p></div>
-                    <i class="fas fa-coins fa-2x text-warning opacity-50"></i>
+            <div class="col-6 col-md-4 col-xl">
+                <div class="card stat-card bg-success-soft h-100">
+                    <div class="card-body d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <div class="stat-label">CA Global DH</div>
+                            <div class="stat-value"><?= number_format($totalCA, 2, '.', ' ') ?></div>
+                        </div>
+                        <div class="stat-icon success">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<?php if (!Auth::isAdmin()): ?>
-<!-- User-only stats -->
+<!-- Stats par user -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="fas fa-table me-2 text-primary"></i> Stats par user</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Nom user</th>
+                        <th>Email</th>
+                        <th>Date creation</th>
+                        <th class="text-center">Nb clients</th>
+                        <th class="text-center">Nb devis et factures</th>
+                        <th class="text-end">CA Global</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($statsUsers as $s): ?>
+                    <tr>
+                        <td>
+                            <?= Helper::sanitize($s['nom_complet']) ?>
+                            <?php if ($s['role'] === 'admin'): ?>
+                                <span class="badge bg-danger ms-1">Admin</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?= Helper::sanitize($s['email']) ?></td>
+                        <td><?= date('d/m/Y', strtotime($s['created_at'])) ?></td>
+                        <td class="text-center"><?= (int) $s['nb_clients'] ?></td>
+                        <td class="text-center"><?= (int) $s['nb_docs'] ?></td>
+                        <td class="text-end fw-semibold"><?= Helper::formatMoney($s['ca_global']) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<?php else: ?>
+<!-- Row 1 -->
 <div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="card stat-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= $totalProduits ?></h5><p class="text-muted small mb-0">Produits/Services</p></div>
-                    <i class="fas fa-box fa-2x text-secondary opacity-50"></i>
+    <div class="col-lg-3 col-md-6">
+        <div class="card stat-card bg-info-soft h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Clients</div>
+                    <div class="stat-value"><?= $totalClients ?></div>
+                </div>
+                <div class="stat-icon info">
+                    <i class="fas fa-user-tie"></i>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card stat-card red">
+    <div class="col-lg-3 col-md-6">
+        <div class="card stat-card bg-warning-soft h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Produits / Services</div>
+                    <div class="stat-value"><?= $totalProduits ?></div>
+                </div>
+                <div class="stat-icon warning">
+                    <i class="fas fa-box"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="card stat-card bg-danger-soft h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Declarations</div>
+                    <div class="stat-value"><?= $totalDeclarations ?></div>
+                </div>
+                <div class="stat-icon danger">
+                    <i class="fas fa-calculator"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="card stat-card bg-success-soft h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">CA Global</div>
+                    <div class="stat-value"><?= Helper::formatMoney($totalCA) ?></div>
+                </div>
+                <div class="stat-icon success">
+                    <i class="fas fa-coins"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 2: Devis, Factures -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6 col-md-6">
+        <div class="card stat-card bg-primary-soft h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Devis</div>
+                    <div class="stat-value"><?= $docStats['devis'] ?></div>
+                </div>
+                <div class="stat-icon primary">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 col-md-6">
+        <div class="card stat-card bg-success-soft h-100">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="stat-label">Factures</div>
+                    <div class="stat-value"><?= $docStats['facture'] ?></div>
+                </div>
+                <div class="stat-icon success">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Row 3: Financials -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-3 col-md-6">
+        <div class="card stat-card bg-info-soft h-100">
             <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div><h5 class="card-title mb-0"><?= $totalDeclarations ?></h5><p class="text-muted small mb-0">Declarations</p></div>
-                    <i class="fas fa-calculator fa-2x text-danger opacity-50"></i>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label">CA Previsionnel</div>
+                        <div class="stat-value"><?= Helper::formatMoney($caPrevisionnel) ?></div>
+                        <small class="text-muted">Montants clients</small>
+                    </div>
+                    <div class="stat-icon info">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="card stat-card bg-danger-soft h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label">Charges</div>
+                        <div class="stat-value"><?= Helper::formatMoney($totalCharges) ?></div>
+                        <small class="text-muted">Total charges</small>
+                    </div>
+                    <div class="stat-icon danger">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="card stat-card bg-success-soft h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label">CA Realise</div>
+                        <div class="stat-value"><?= Helper::formatMoney($caRealise) ?></div>
+                        <small class="text-muted">Total factures payees</small>
+                    </div>
+                    <div class="stat-icon success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="card stat-card <?= $resultat >= 0 ? 'bg-success-soft' : 'bg-danger-soft' ?> h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-label">Resultat</div>
+                        <div class="stat-value"><?= Helper::formatMoney($resultat) ?></div>
+                        <small class="text-muted">CA Previsionnel - Charges</small>
+                    </div>
+                    <div class="stat-icon <?= $resultat >= 0 ? 'success' : 'danger' ?>">
+                        <i class="fas fa-balance-scale"></i>
+                    </div>
                 </div>
             </div>
         </div>
@@ -139,12 +324,12 @@ if (Auth::isAdmin()) {
 
 <!-- Posts & Annonces -->
 <div class="row g-4 mb-4">
-    <div class="col-md-6">
-        <div class="card">
+    <div class="col-lg-6">
+        <div class="card h-100">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="fas fa-newspaper me-2 text-info"></i> Posts</h6>
                 <?php if (Auth::isAdmin()): ?>
-                    <a href="<?= APP_URL ?>/?page=admin/annonces" class="btn btn-sm btn-outline-primary">Gérer</a>
+                    <a href="<?= APP_URL ?>/?page=admin/annonces" class="btn btn-sm btn-outline-primary">Gerer</a>
                 <?php endif; ?>
             </div>
             <div class="card-body">
@@ -152,8 +337,8 @@ if (Auth::isAdmin()) {
                     <p class="text-muted text-center py-3 mb-0">Aucun post pour l'instant.</p>
                 <?php else: ?>
                     <?php foreach ($posts as $p): ?>
-                        <a href="<?= APP_URL ?>/?page=annonces/view&id=<?= $p['id'] ?>" class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2 text-decoration-none text-dark">
-                            <span class="fw-semibold"><?= Helper::sanitize($p['titre']) ?></span>
+                        <a href="<?= APP_URL ?>/?page=annonces/view&id=<?= $p['id'] ?>" class="d-flex justify-content-between align-items-center border-bottom py-2 text-decoration-none text-dark hover-primary">
+                            <span class="fw-semibold"><i class="fas fa-chevron-right me-2 text-muted small"></i><?= Helper::sanitize($p['titre']) ?></span>
                             <small class="text-muted text-nowrap ms-3"><?= date('d/m/Y', strtotime($p['created_at'])) ?></small>
                         </a>
                     <?php endforeach; ?>
@@ -161,12 +346,12 @@ if (Auth::isAdmin()) {
             </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card">
+    <div class="col-lg-6">
+        <div class="card h-100">
             <div class="card-header bg-white d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="fas fa-bullhorn me-2 text-warning"></i> Annonces</h6>
                 <?php if (Auth::isAdmin()): ?>
-                    <a href="<?= APP_URL ?>/?page=admin/annonces" class="btn btn-sm btn-outline-primary">Gérer</a>
+                    <a href="<?= APP_URL ?>/?page=admin/annonces" class="btn btn-sm btn-outline-primary">Gerer</a>
                 <?php endif; ?>
             </div>
             <div class="card-body">
@@ -174,8 +359,8 @@ if (Auth::isAdmin()) {
                     <p class="text-muted text-center py-3 mb-0">Aucune annonce pour l'instant.</p>
                 <?php else: ?>
                     <?php foreach ($annoncesList as $a): ?>
-                        <a href="<?= APP_URL ?>/?page=annonces/view&id=<?= $a['id'] ?>" class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2 text-decoration-none text-dark">
-                            <span class="fw-semibold"><?= Helper::sanitize($a['titre']) ?></span>
+                        <a href="<?= APP_URL ?>/?page=annonces/view&id=<?= $a['id'] ?>" class="d-flex justify-content-between align-items-center border-bottom py-2 text-decoration-none text-dark hover-primary">
+                            <span class="fw-semibold"><i class="fas fa-chevron-right me-2 text-muted small"></i><?= Helper::sanitize($a['titre']) ?></span>
                             <small class="text-muted text-nowrap ms-3"><?= date('d/m/Y', strtotime($a['created_at'])) ?></small>
                         </a>
                     <?php endforeach; ?>
@@ -186,7 +371,7 @@ if (Auth::isAdmin()) {
 </div>
 
 <?php if (!Auth::isAdmin()): ?>
-<!-- Documents recents (User) -->
+<!-- Documents recents -->
 <div class="card">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h6 class="mb-0"><i class="fas fa-clock me-2"></i> Documents recents</h6>
@@ -202,7 +387,16 @@ if (Auth::isAdmin()) {
         <?php else: ?>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead><tr><th>Type</th><th>Client</th><th>Date</th><th class="text-end">Total HT</th><th>Statut</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Client</th>
+                            <th>Date</th>
+                            <th class="text-end">Total HT</th>
+                            <th>Statut</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
                     <tbody>
                     <?php foreach ($recentDocs as $doc): ?>
                         <tr>
@@ -223,84 +417,17 @@ if (Auth::isAdmin()) {
                                     <?= ucfirst($doc['statut']) ?>
                                 </span>
                             </td>
+                            <td class="text-center">
+                                <a href="<?= APP_URL ?>/?page=documents/view&id=<?= $doc['id'] ?>" class="btn btn-sm btn-outline-primary" title="Voir">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
         <?php endif; ?>
-    </div>
-</div>
-<?php else: ?>
-<!-- Admin : Utilisateurs + Derniers documents -->
-<div class="row g-4">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-white"><h6 class="mb-0"><i class="fas fa-users me-2"></i> Utilisateurs (<?= $totalUsers ?>)</h6></div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead><tr><th>Nom</th><th>Email</th><th>Ville</th><th>Inscription</th></tr></thead>
-                        <tbody>
-                        <?php foreach ($allUsers as $u): ?>
-                            <tr>
-                                <td>
-                                    <?= Helper::sanitize($u['nom_complet']) ?>
-                                    <?php if ($u['role'] === 'admin'): ?>
-                                        <span class="badge bg-danger ms-1">Admin</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= Helper::sanitize($u['email']) ?></td>
-                                <td><?= Helper::sanitize($u['ville'] ?? '-') ?></td>
-                                <td><?= date('d/m/Y', strtotime($u['created_at'])) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i> Derniers documents</h6>
-                <a href="<?= APP_URL ?>/?page=documents" class="btn btn-sm btn-outline-primary">Voir tout</a>
-            </div>
-            <div class="card-body p-0">
-                <?php
-                $recentDocsAll = $docModel->getAll();
-                array_splice($recentDocsAll, 5);
-                ?>
-                <?php if (empty($recentDocsAll)): ?>
-                    <p class="text-muted text-center py-4 mb-0">Aucun document.</p>
-                <?php else: ?>
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead><tr><th>Type</th><th>Client</th><th>Date</th><th class="text-end">Total HT</th></tr></thead>
-                            <tbody>
-                            <?php foreach ($recentDocsAll as $doc): ?>
-                                <tr>
-                                    <td>
-                                        <?php
-                                        $labels = ['devis' => 'Devis', 'facture' => 'Facture', 'bon_livraison' => 'Bon livr.'];
-                                        $colors = ['devis' => 'primary', 'facture' => 'success', 'bon_livraison' => 'warning'];
-                                        ?>
-                                        <span class="badge bg-<?= $colors[$doc['type_document']] ?? 'secondary' ?>">
-                                            <?= $labels[$doc['type_document']] ?? '' ?>
-                                        </span>
-                                    </td>
-                                    <td><?= Helper::sanitize($doc['nom_client']) ?></td>
-                                    <td><?= date('d/m/Y', strtotime($doc['date_document'])) ?></td>
-                                    <td class="text-end fw-semibold"><?= Helper::formatMoney($doc['total_ht'], $doc['devise'] ?? 'MAD') ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
-            </div>
-        </div>
     </div>
 </div>
 <?php endif; ?>

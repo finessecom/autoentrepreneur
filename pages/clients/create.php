@@ -1,8 +1,8 @@
 <?php
 $pageTitle = 'Nouveau client';
-require_once __DIR__ . '/../../includes/header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $clientModel = new Client();
     $id = $clientModel->create(Auth::userId(), $_POST);
     if ($id) {
@@ -12,6 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Helper::setError('Erreur lors de la création.');
     }
 }
+
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -24,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="card">
     <div class="card-body">
         <form method="POST">
+            <?= csrf_field() ?>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Nom du client *</label>
@@ -56,6 +59,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <option value="EUR">EUR - Euro</option>
                         <option value="USD">USD - Dollar US</option>
                     </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Date échéance</label>
+                    <input type="date" name="date_echance" class="form-control"
+                           value="<?= Helper::sanitize($_POST['date_echance'] ?? '') ?>">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Montant</label>
+                    <input type="number" name="montant" class="form-control" step="0.01" min="0"
+                           value="<?= Helper::sanitize($_POST['montant'] ?? '') ?>">
                 </div>
             </div>
             <div class="mt-4">

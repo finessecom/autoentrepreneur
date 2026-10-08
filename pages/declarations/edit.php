@@ -1,7 +1,5 @@
 <?php
 $pageTitle = 'Modifier declaration';
-require_once __DIR__ . '/../../includes/header.php';
-
 $declModel = new Declaration();
 $id = (int)($_GET['id'] ?? 0);
 $decl = $declModel->getById($id, Auth::userId());
@@ -12,13 +10,15 @@ if (!$decl) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $caCommerce = (float)$_POST['ca_commerce'];
     $caService = (float)$_POST['ca_service'];
 
     $ir = $declModel->calculerIR($caCommerce, $caService);
-    $cnss = $declModel->calculerCNSS($caCommerce + $caService);
+    $cnssTranche = $_POST['cnss_tranche'] ?? 'T0';
+    $cnssMontant = Declaration::cnssMontant($cnssTranche);
     $retenueSource = (float)($_POST['retenue_source'] ?? 0);
-    $totalAPayer = $ir['ir_total'] + $cnss['cnss_trimestre'] + $retenueSource;
+    $totalAPayer = $ir['ir_total'] + $cnssMontant + $retenueSource;
 
     $data = [
         'annee'          => (int)$_POST['annee'],
@@ -26,18 +26,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'ca_commerce'    => $caCommerce,
         'ca_service'     => $caService,
         'ir_calcule'     => $ir['ir_total'],
-        'cnss_calcule'   => $cnss['cnss_trimestre'],
+        'cnss_calcule'   => $cnssMontant,
+        'cnss_tranche'   => $cnssTranche,
         'retenue_source' => $retenueSource,
         'total_a_payer'  => $totalAPayer,
         'est_declare'    => isset($_POST['est_declare']) ? 1 : 0,
+        'est_paye'       => isset($_POST['est_paye']) ? 1 : 0,
         'mode_paiement'  => $_POST['mode_paiement'] ?? null,
         'date_declaration' => !empty($_POST['date_declaration']) ? $_POST['date_declaration'] : null,
+        'ref_declaration' => !empty($_POST['ref_declaration']) ? $_POST['ref_declaration'] : null,
+        'ref_paiement'   => !empty($_POST['ref_paiement']) ? $_POST['ref_paiement'] : null,
+        'date_paiement'  => !empty($_POST['date_paiement']) ? $_POST['date_paiement'] : null,
     ];
 
     $declModel->create(Auth::userId(), $data);
     Helper::setSuccess('Declaration mise a jour.');
     Helper::redirect(APP_URL . '/?page=declarations&year=' . $data['annee']);
 }
+
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -48,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </div>
 
 <form method="POST">
+    <?= csrf_field() ?>
     <div class="card mb-4">
         <div class="card-body">
             <div class="row g-3">
@@ -87,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label class="form-label">Mode paiement</label>
                     <select name="mode_paiement" class="form-select">
                         <option value="">-- Non défini --</option>
-                        <?php foreach (['especes' => 'Espèces', 'virement' => 'Virement', 'cheque' => 'Chèque', 'cnss' => 'CNSS'] as $val => $label): ?>
+                        <?php foreach (['especes' => 'Espèces', 'virement' => 'Virement', 'cashplus' => 'Cashplus', 'taptapsend' => 'TapTapSend', 'autre' => 'Autres'] as $val => $label): ?>
                             <option value="<?= $val ?>" <?= $decl['mode_paiement'] === $val ? 'selected' : '' ?>><?= $label ?></option>
                         <?php endforeach; ?>
                     </select>

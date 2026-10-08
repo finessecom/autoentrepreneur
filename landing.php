@@ -16,6 +16,7 @@ $success = '';
 $activeTab = 'login';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     if (isset($_POST['action'])) {
         if ($_POST['action'] === 'login') {
             $email = trim($_POST['email'] ?? '');
@@ -94,18 +95,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             background: #fff;
         }
 
-        /* Banner strip */
-        .banner-strip {
-            width: 100%;
-            background: var(--n-50);
+        /* Header logo + baseline */
+        .landing-header {
+            background: #fff;
             border-bottom: 1px solid var(--n-200);
-            overflow: hidden;
+            padding: 14px 0;
         }
-        .banner-strip img {
+        .landing-header .container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+        .landing-logo {
+            height: 46px;
+            width: auto;
+            flex-shrink: 0;
             display: block;
-            width: 100%;
-            height: auto;
-            object-fit: contain;
+        }
+        .landing-tagline {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--n-900);
+            line-height: 1.4;
         }
 
         /* Hero */
@@ -214,26 +226,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .auth-panel { display: none; }
         .auth-panel.active { display: block; }
 
-        .test-accounts {
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px solid var(--n-200);
-            font-size: 12px;
-            color: var(--n-600);
-        }
-        .test-accounts .account-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 0;
-        }
-        .test-accounts code {
-            font-size: 11px;
-            background: var(--n-100);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-
         /* Features section */
         .features {
             padding: 96px 0;
@@ -279,6 +271,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 20px;
             margin-bottom: 20px;
         }
+        .feature-step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
         .feature-label {
             font-size: 11px;
             font-weight: 600;
@@ -321,14 +326,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             .features { padding: 64px 0; }
             .features-title { font-size: 26px; }
         }
+        @media (max-width: 576px) {
+            .landing-logo { height: 38px; }
+            .landing-tagline { font-size: 14px; text-align: center; }
+            .landing-header .container { gap: 12px; flex-wrap: wrap; justify-content: center; }
+        }
     </style>
 </head>
 <body>
 
-<!-- Banner -->
-<div class="banner-strip">
-    <img src="<?= APP_URL ?>/assets/images/banniere_autoentrepreneur.webp" alt="L'Auto-Entrepreneur">
-</div>
+<!-- Header : logo + baseline -->
+<header class="landing-header">
+    <div class="container">
+        <img src="<?= APP_URL ?>/assets/images/logo-auto-entrepreneur-maroc.png" alt="Logo Auto-Entrepreneur Maroc" class="landing-logo">
+        <span class="landing-tagline">Une seule application pour gérer vos documents, vos déclarations et vos clients</span>
+    </div>
+</header>
 
 <!-- Hero -->
 <section class="hero">
@@ -361,6 +374,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <!-- Login -->
                         <div id="panel-login" class="auth-panel <?= $activeTab === 'login' ? 'active' : '' ?>">
                             <form method="POST">
+                                <?= csrf_field() ?>
                                 <input type="hidden" name="action" value="login">
                                 <div class="mb-3">
                                     <label class="form-label">Email</label>
@@ -379,6 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <!-- Register -->
                         <div id="panel-register" class="auth-panel <?= $activeTab === 'register' ? 'active' : '' ?>">
                             <form method="POST">
+                                <?= csrf_field() ?>
                                 <input type="hidden" name="action" value="register">
                                 <div class="mb-3">
                                     <label class="form-label">Nom complet *</label>
@@ -405,15 +420,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                 </button>
                             </form>
                         </div>
-
-                        <!-- Test accounts -->
-                        <div class="test-accounts">
-                            <div class="fw-semibold mb-1" style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Compte de test</div>
-                            <div class="account-row">
-                                <span><i class="fas fa-shield-alt me-1 text-primary"></i> Admin</span>
-                                <span><code>admin@admin.com</code> / <code>admin123</code></span>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -424,48 +430,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!-- Features -->
 <section class="features">
     <div class="container">
-        <div class="features-title">Tout ce dont vous avez besoin</div>
-        <p class="features-subtitle">Une seule application pour gérer vos documents, vos déclarations et vos clients.</p>
+        <div class="features-title">Prêt en 4 étapes, sans compétences comptables</div>
+        <p class="features-subtitle">Une utilisation d'une simplicité absolue : créez votre compte, ajoutez vos clients et commencez à facturer en quelques minutes.</p>
 
         <div class="row g-4">
-            <!-- Card Documents -->
-            <div class="col-md-4">
+            <!-- Étape 1 -->
+            <div class="col-md-6 col-lg-3">
                 <div class="feature-card h-100">
+                    <div class="feature-step">1</div>
+                    <div class="feature-icon">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+                    <div class="feature-label">Étape 1</div>
+                    <h3 class="feature-heading">Créer votre compte</h3>
+                    <p class="feature-text">
+                        Inscription en 30 secondes : nom, email, ville. Aucune carte bancaire, aucun engagement.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Étape 2 -->
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-card h-100">
+                    <div class="feature-step">2</div>
+                    <div class="feature-icon">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <div class="feature-label">Étape 2</div>
+                    <h3 class="feature-heading">Ajouter vos clients</h3>
+                    <p class="feature-text">
+                        Créez vos clients et votre catalogue de produits / services en quelques clics, avec ICE et échéances.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Étape 3 -->
+            <div class="col-md-6 col-lg-3">
+                <div class="feature-card h-100">
+                    <div class="feature-step">3</div>
                     <div class="feature-icon">
                         <i class="fas fa-file-invoice"></i>
                     </div>
-                    <div class="feature-label">Documents</div>
-                    <h3 class="feature-heading">Documents professionnels</h3>
+                    <div class="feature-label">Étape 3</div>
+                    <h3 class="feature-heading">Devis & factures</h3>
                     <p class="feature-text">
-                        Devis, factures, bons de livraison. Numérotation automatique avec préfixe configurable. PDF avec logo, signature et bannière. Multi-devises : MAD, EUR, USD, GBP.
+                        Choisissez un client, ajoutez vos lignes : numérotation automatique et PDF prêts à envoyer.
                     </p>
                 </div>
             </div>
 
-            <!-- Card Déclarations -->
-            <div class="col-md-4">
+            <!-- Étape 4 -->
+            <div class="col-md-6 col-lg-3">
                 <div class="feature-card h-100">
+                    <div class="feature-step">4</div>
                     <div class="feature-icon">
                         <i class="fas fa-calculator"></i>
                     </div>
-                    <div class="feature-label">Déclarations</div>
-                    <h3 class="feature-heading">Déclarations fiscales</h3>
+                    <div class="feature-label">Étape 4</div>
+                    <h3 class="feature-heading">Déclarer votre CA</h3>
                     <p class="feature-text">
-                        Simulateur IR, CNSS, retenue à la source. 9 tranches CNSS. Suivi trimestriel avec pénalités de retard automatiques. Références de paiement et de déclaration.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Card Gestion -->
-            <div class="col-md-4">
-                <div class="feature-card h-100">
-                    <div class="feature-icon">
-                        <i class="fas fa-th-large"></i>
-                    </div>
-                    <div class="feature-label">Gestion</div>
-                    <h3 class="feature-heading">Business centralisé</h3>
-                    <p class="feature-text">
-                        Clients, produits, documents, déclarations. Dashboard avec posts et annonces. Profil avec RIB et banque. Tout est au même endroit.
+                        Simulateur IR / CNSS, déclaration trimestrielle et suivi de vos paiements en toute sérénité.
                     </p>
                 </div>
             </div>

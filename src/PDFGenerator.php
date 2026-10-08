@@ -18,11 +18,15 @@ class PDFGenerator {
         $ref = $doc['numero'] ?? Helper::generateRef($doc['type_document'], date('Y', strtotime($doc['date_document'])), $doc['id']);
 
         // Bannière
-        $bannerPath = __DIR__ . '/../assets/images/banniere_autoentrepreneur.webp';
+        $bannerPath = __DIR__ . '/../assets/images/banniere_autoentrepreneur.png';
+        if (!file_exists($bannerPath)) {
+            $bannerPath = __DIR__ . '/../assets/images/banniere_autoentrepreneur.webp';
+        }
         $bannerHtml = '';
         if (file_exists($bannerPath)) {
             $bannerData = base64_encode(file_get_contents($bannerPath));
-            $bannerHtml = '<img src="data:image/webp;base64,' . $bannerData . '" style="width:100%;height:auto;display:block;margin-bottom:20px;">';
+            $bannerMime = pathinfo($bannerPath, PATHINFO_EXTENSION) === 'webp' ? 'image/webp' : 'image/png';
+            $bannerHtml = '<img src="data:' . $bannerMime . ';base64,' . $bannerData . '" style="width:100%;height:auto;display:block;margin-bottom:20px;">';
         }
 
         // Logo utilisateur
@@ -56,6 +60,19 @@ class PDFGenerator {
 
         $montantLettres = Helper::montantEnLettres($doc['total_ht'], $devise);
 
+        // Filigrane + encadré pour document annulé
+        $annuleCss = '';
+        $annuleHtml = '';
+        if (($doc['statut'] ?? '') === 'annule') {
+            $annuleCss = '
+.watermark { position: absolute; top: 320px; left: 0; width: 100%; text-align: center; font-size: 120px; font-weight: bold; color: rgba(220, 38, 38, 0.12); transform: rotate(-25deg); }
+.annule-box { border: 2px solid #dc2626; background: #fef2f2; color: #dc2626; padding: 10px 12px; border-radius: 6px; margin: 10px 0 5px 0; font-size: 12px; }
+';
+            $dateAnn = !empty($doc['date_annulation']) ? date('d/m/Y à H:i', strtotime($doc['date_annulation'])) : '-';
+            $annuleHtml = '<div class="watermark">ANNUL&Eacute;E</div>
+<div class="annule-box"><strong>DOCUMENT ANNUL&Eacute;</strong> le ' . $dateAnn . '<br><strong>Motif :</strong> ' . htmlspecialchars($doc['motif_annulation'] ?? '-') . '</div>';
+        }
+
         $html = '<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
@@ -70,8 +87,10 @@ th { background-color: #2c3e50; color: white; font-weight: bold; }
 .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; }
 .legal { font-size: 9px; color: #999; margin-top: 15px; }
 .header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+' . $annuleCss . '
 </style></head><body>
 
+' . $annuleHtml . '
 ' . $bannerHtml . '
 
 <div class="title">' . $docLabel . '</div>

@@ -12,6 +12,7 @@ if (isset($_SESSION['user_id'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $nomComplet = trim($_POST['nom_complet'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
@@ -68,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <?php endif; ?>
 
                 <form method="POST">
+                    <?= csrf_field() ?>
                     <div class="mb-3">
                         <label class="form-label">Nom complet *</label>
                         <input type="text" name="nom_complet" class="form-control" required
@@ -104,11 +106,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Mot de passe * (min 6 car.)</label>
-                        <input type="password" name="password" class="form-control" required minlength="6">
+                        <div class="input-group">
+                            <input type="password" name="password" class="form-control" required minlength="6">
+                            <button class="btn btn-outline-secondary toggle-password" type="button">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="mb-4">
                         <label class="form-label">Confirmer le mot de passe *</label>
-                        <input type="password" name="password_confirm" class="form-control" required>
+                        <div class="input-group">
+                            <input type="password" name="password_confirm" class="form-control" required>
+                            <button class="btn btn-outline-secondary toggle-password" type="button">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100 py-2">
                         <i class="fas fa-user-plus me-2"></i> S'inscrire
@@ -121,5 +133,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
     </div>
+    <script>
+    document.querySelectorAll('.toggle-password').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var input = this.previousElementSibling;
+            var icon = this.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        });
+    });
+    </script>
 </body>
 </html>

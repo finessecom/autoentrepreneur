@@ -3,8 +3,15 @@ $pageTitle = 'Declarations';
 require_once __DIR__ . '/../../includes/header.php';
 
 $declModel = new Declaration();
+$docModel = new Document();
 $year = isset($_GET['year']) ? (int)$_GET['year'] : (int)date('Y');
 $declarations = $declModel->getByUser(Auth::userId(), $year);
+
+// Charger les factures déclarées pour chaque trimestre
+$invoicesByTrim = [];
+foreach ($declarations as $decl) {
+    $invoicesByTrim[$decl['trimestre']] = $docModel->getByDeclaration(Auth::userId(), $year, $decl['trimestre']);
+}
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -49,12 +56,12 @@ $declarations = $declModel->getByUser(Auth::userId(), $year);
                     <thead>
                         <tr>
                             <th>Trimestre</th>
-                            <th class="text-end">CA Commerce</th>
                             <th class="text-end">CA Service</th>
                             <th class="text-end">IR</th>
                             <th class="text-end">CNSS</th>
                             <th class="text-end">RAS</th>
                             <th class="text-end">Total a payer</th>
+                            <th>Factures</th>
                             <th>Declare</th>
                             <th class="text-center">Actions</th>
                         </tr>
@@ -63,12 +70,25 @@ $declarations = $declModel->getByUser(Auth::userId(), $year);
                     <?php foreach ($declarations as $decl): ?>
                         <tr>
                             <td><strong>T<?= $decl['trimestre'] ?></strong></td>
-                            <td class="text-end"><?= Helper::formatMoney($decl['ca_commerce']) ?></td>
                             <td class="text-end"><?= Helper::formatMoney($decl['ca_service']) ?></td>
                             <td class="text-end"><?= Helper::formatMoney($decl['ir_calcule']) ?></td>
                             <td class="text-end"><?= Helper::formatMoney($decl['cnss_calcule']) ?></td>
                             <td class="text-end"><?= Helper::formatMoney($decl['retenue_source']) ?></td>
                             <td class="text-end fw-bold text-danger"><?= Helper::formatMoney($decl['total_a_payer']) ?></td>
+                            <td>
+                                <?php
+                                $invoices = $invoicesByTrim[$decl['trimestre']] ?? [];
+                                if (empty($invoices)):
+                                ?>
+                                    <span class="text-muted">-</span>
+                                <?php else: ?>
+                                    <?php foreach ($invoices as $inv): ?>
+                                        <span class="badge bg-light text-dark border me-1 mb-1">
+                                            <?= Helper::sanitize($inv['numero']) ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?php if ($decl['est_declare']): ?>
                                     <span class="badge bg-success"><i class="fas fa-check me-1"></i> Oui</span>

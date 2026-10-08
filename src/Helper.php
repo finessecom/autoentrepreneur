@@ -59,6 +59,33 @@ class Helper {
         return ['MAD', 'EUR', 'USD', 'GBP'];
     }
 
+    public static function validateUpload(array $file, array $allowedExtensions, int $maxSize = 5242880): ?string {
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return 'Erreur lors de l\'upload du fichier.';
+        }
+        if ($file['size'] > $maxSize) {
+            return 'Le fichier est trop volumineux (max ' . round($maxSize / 1048576, 1) . ' Mo).';
+        }
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedExtensions)) {
+            return 'Type de fichier non autorisé. Autorisés : ' . implode(', ', $allowedExtensions);
+        }
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mime = $finfo->file($file['tmp_name']);
+        $allowedMimes = [
+            'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+            'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml',
+            'pdf' => 'application/pdf', 'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls' => 'application/vnd.ms-excel',
+            'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ];
+        if (isset($allowedMimes[$ext]) && $mime !== $allowedMimes[$ext]) {
+            return 'Le contenu du fichier ne correspond pas à son extension.';
+        }
+        return null;
+    }
+
     public static function generateRef(string $type, int $year, int $id): string {
         $prefixes = ['devis' => 'DEV', 'facture' => 'FAC', 'bon_livraison' => 'BON'];
         $prefix = $prefixes[$type] ?? 'DOC';
@@ -77,21 +104,22 @@ class Helper {
         ];
         $curr = $currencyNames[strtoupper($devise)] ?? $currencyNames['MAD'];
 
-        if ($whole === 0) return 'zéro';
+        if ($whole === 0 && $cents === 0) return 'zéro';
 
         $result = '';
-        if ($whole >= 1000000) {
-            $millions = (int) ($whole / 1000000);
+        $remaining = $whole;
+        if ($remaining >= 1000000) {
+            $millions = (int) ($remaining / 1000000);
             $result .= ($millions === 1 ? 'un million' : self::numberToWords($millions) . ' millions') . ' ';
-            $whole %= 1000000;
+            $remaining %= 1000000;
         }
-        if ($whole >= 1000) {
-            $thousands = (int) ($whole / 1000);
+        if ($remaining >= 1000) {
+            $thousands = (int) ($remaining / 1000);
             $result .= ($thousands === 1 ? 'mille' : self::numberToWords($thousands) . ' mille') . ' ';
-            $whole %= 1000;
+            $remaining %= 1000;
         }
-        if ($whole > 0) {
-            $result .= self::numberToWords($whole);
+        if ($remaining > 0) {
+            $result .= self::numberToWords($remaining);
         }
 
         $result = trim($result);
@@ -118,7 +146,7 @@ class Helper {
             if ($hundreds === 1) {
                 $result .= 'cent ';
             } else {
-                $result .= $ones[$hundreds] . ' cent' . ($hundreds > 1 ? 's ' : ' ');
+                $result .= $ones[$hundreds] . ' cent' . ($num % 100 === 0 && $hundreds > 1 ? 's ' : ' ');
             }
             $num %= 100;
         }

@@ -5,6 +5,13 @@ require_once __DIR__ . '/../../includes/header.php';
 $clientModel = new Client();
 $search = $_GET['search'] ?? '';
 $clients = $clientModel->getByUser(Auth::userId(), $search);
+
+// Stats
+$nbClients = count($clients);
+$caTotal = 0;
+foreach ($clients as $c) {
+    $caTotal += $c['montant'] ?? 0;
+}
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -12,6 +19,40 @@ $clients = $clientModel->getByUser(Auth::userId(), $search);
     <a href="<?= APP_URL ?>/?page=clients/create" class="btn btn-primary">
         <i class="fas fa-plus me-1"></i> Nouveau client
     </a>
+</div>
+
+<!-- Cards dashboard -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card border-primary">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">Nombre de clients</p>
+                        <h3 class="mb-0 text-primary"><?= $nbClients ?></h3>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                        <i class="fas fa-users fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="text-muted mb-1">CA Previsionnel</p>
+                        <h3 class="mb-0 text-success"><?= Helper::formatMoney($caTotal) ?></h3>
+                    </div>
+                    <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                        <i class="fas fa-coins fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="card mb-4">
@@ -48,7 +89,8 @@ $clients = $clientModel->getByUser(Auth::userId(), $search);
                             <th>ICE</th>
                             <th>Email</th>
                             <th>Téléphone</th>
-                            <th>Ville</th>
+                            <th>Échéance</th>
+                            <th class="text-end">Montant</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
@@ -59,8 +101,35 @@ $clients = $clientModel->getByUser(Auth::userId(), $search);
                             <td><code><?= Helper::sanitize($client['ice'] ?? '-') ?></code></td>
                             <td><?= Helper::sanitize($client['email'] ?? '-') ?></td>
                             <td><?= Helper::sanitize($client['telephone'] ?? '-') ?></td>
-                            <td><?= Helper::sanitize(explode("\n", $client['adresse'] ?? '')[0] ?? '-') ?></td>
+                            <td>
+                                <?php if (!empty($client['date_echance'])): ?>
+                                    <?php
+                                    $echance = new DateTime($client['date_echance']);
+                                    $now = new DateTime();
+                                    $diff = $now->diff($echance);
+                                    $isPast = $echance < $now;
+                                    ?>
+                                    <span class="<?= $isPast ? 'text-danger fw-bold' : '' ?>">
+                                        <?= $echance->format('d/m/Y') ?>
+                                        <?php if ($isPast): ?>
+                                            <small>(<?= $diff->days ?>j retard)</small>
+                                        <?php endif; ?>
+                                    </span>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-end fw-semibold">
+                                <?php if (!empty($client['montant'])): ?>
+                                    <?= Helper::formatMoney($client['montant'], $client['devise'] ?? 'MAD') ?>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
                             <td class="text-center">
+                                <a href="<?= APP_URL ?>/?page=clients/view&id=<?= $client['id'] ?>" class="btn btn-sm btn-outline-info" title="Visualiser">
+                                    <i class="fas fa-eye"></i>
+                                </a>
                                 <a href="<?= APP_URL ?>/?page=clients/edit&id=<?= $client['id'] ?>" class="btn btn-sm btn-outline-primary" title="Modifier">
                                     <i class="fas fa-edit"></i>
                                 </a>

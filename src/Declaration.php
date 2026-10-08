@@ -15,7 +15,7 @@ class Declaration {
             $params[] = $year;
         }
 
-        $sql .= ' ORDER BY annee DESC, trimestre DESC';
+        $sql .= ' ORDER BY annee ASC, trimestre ASC';
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();

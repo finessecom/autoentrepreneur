@@ -25,6 +25,7 @@ class Auth {
         $userId = (int) $this->db->lastInsertId();
         $_SESSION['user_id'] = $userId;
         $_SESSION['role'] = 'user';
+        session_regenerate_id(true);
 
         Helper::setSuccess('Compte créé avec succès ! Bienvenue.');
         return true;
@@ -42,12 +43,18 @@ class Auth {
 
         $_SESSION['user_id'] = (int) $user['id'];
         $_SESSION['role'] = $user['role'];
+        session_regenerate_id(true);
 
         Helper::setSuccess('Connexion réussie.');
         return true;
     }
 
     public function logout(): void {
+        $_SESSION = [];
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000, $params["path"], $params["domain"], $params["secure"], $params["httponly"]);
+        }
         session_destroy();
         Helper::redirect(APP_URL . '/auth/login.php');
     }

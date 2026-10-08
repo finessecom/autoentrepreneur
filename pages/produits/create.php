@@ -1,13 +1,18 @@
 <?php
 $pageTitle = 'Nouveau produit/service';
-require_once __DIR__ . '/../../includes/header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    verify_csrf_token();
     $prodModel = new ProduitService();
 
     $data = $_POST;
     if (!empty($_FILES['image']['tmp_name'])) {
-        $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
+        $error = Helper::validateUpload($_FILES['image'], ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+        if ($error) {
+            Helper::setError($error);
+            Helper::redirect(APP_URL . '/?page=produits/create');
+        }
+        $ext = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
         $filename = 'prod_' . time() . '_' . mt_rand(1000, 9999) . '.' . $ext;
         $dest = PRODUIT_DIR . $filename;
         if (move_uploaded_file($_FILES['image']['tmp_name'], $dest)) {
@@ -23,6 +28,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         Helper::setError('Erreur lors de la création.');
     }
 }
+
+require_once __DIR__ . '/../../includes/header.php';
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -35,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="card">
     <div class="card-body">
         <form method="POST" enctype="multipart/form-data">
+            <?= csrf_field() ?>
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Type d'activité *</label>
@@ -56,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="col-md-4">
                     <label class="form-label">Prix unitaire *</label>
                     <input type="number" name="prix_unitaire" class="form-control" required step="0.01" min="0"
-                           value="<?= $_POST['prix_unitaire'] ?? '' ?>">
+                           value="<?= Helper::sanitize($_POST['prix_unitaire'] ?? '') ?>">
                 </div>
                 <div class="col-md-2">
                     <label class="form-label">Devise</label>

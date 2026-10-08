@@ -30,7 +30,7 @@ class Client {
 
     public function create(int $userId, array $data): int {
         $stmt = $this->db->prepare(
-            'INSERT INTO clients (user_id, nom_client, ice, email, telephone, adresse, devise) VALUES (?, ?, ?, ?, ?, ?, ?)'
+            'INSERT INTO clients (user_id, nom_client, ice, email, telephone, adresse, devise, date_echance, montant) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
         );
         $stmt->execute([
             $userId,
@@ -39,14 +39,16 @@ class Client {
             $data['email'] ?? null,
             $data['telephone'] ?? null,
             $data['adresse'] ?? null,
-            $data['devise'] ?? 'MAD'
+            $data['devise'] ?? 'MAD',
+            !empty($data['date_echance']) ? $data['date_echance'] : null,
+            !empty($data['montant']) ? $data['montant'] : null
         ]);
         return (int) $this->db->lastInsertId();
     }
 
     public function update(int $id, int $userId, array $data): bool {
         $stmt = $this->db->prepare(
-            'UPDATE clients SET nom_client = ?, ice = ?, email = ?, telephone = ?, adresse = ?, devise = ? WHERE id = ? AND user_id = ?'
+            'UPDATE clients SET nom_client = ?, ice = ?, email = ?, telephone = ?, adresse = ?, devise = ?, date_echance = ?, montant = ? WHERE id = ? AND user_id = ?'
         );
         return $stmt->execute([
             $data['nom_client'],
@@ -55,6 +57,8 @@ class Client {
             $data['telephone'] ?? null,
             $data['adresse'] ?? null,
             $data['devise'] ?? 'MAD',
+            !empty($data['date_echance']) ? $data['date_echance'] : null,
+            !empty($data['montant']) ? $data['montant'] : null,
             $id,
             $userId
         ]);

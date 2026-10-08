@@ -27,7 +27,7 @@ class User {
         foreach ($fields as $field) {
             if (array_key_exists($field, $data)) {
                 $sets[] = "$field = ?";
-                $values[] = is_string($data[$field]) ? trim($data[$field]) : '';
+                $values[] = is_string($data[$field]) ? trim($data[$field]) : (string) $data[$field];
             }
         }
 
@@ -67,5 +67,14 @@ class User {
 
     public function count(): int {
         return (int) $this->db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    }
+
+    public function statsParUser(): array {
+        $sql = 'SELECT u.id, u.nom_complet, u.email, u.role, u.created_at,
+                (SELECT COUNT(*) FROM clients c WHERE c.user_id = u.id) AS nb_clients,
+                (SELECT COUNT(*) FROM documents d WHERE d.user_id = u.id AND d.type_document IN ("devis", "facture")) AS nb_docs,
+                (SELECT COALESCE(SUM(COALESCE(d.montant_paiement, d.total_ht)), 0) FROM documents d WHERE d.user_id = u.id AND d.type_document = "facture" AND d.statut != "annule") AS ca_global
+                FROM users u ORDER BY u.created_at DESC';
+        return $this->db->query($sql)->fetchAll();
     }
 }

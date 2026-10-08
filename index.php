@@ -10,6 +10,8 @@ require_once __DIR__ . '/src/ProduitService.php';
 require_once __DIR__ . '/src/Document.php';
 require_once __DIR__ . '/src/Declaration.php';
 require_once __DIR__ . '/src/Annonce.php';
+require_once __DIR__ . '/src/Charge.php';
+require_once __DIR__ . '/src/ClientEchange.php';
 
 set_security_headers();
 
@@ -24,6 +26,7 @@ $page = $_GET['page'] ?? 'dashboard';
 $routes = [
     'dashboard'     => 'pages/dashboard.php',
     'clients'       => 'pages/clients/index.php',
+    'clients/view'  => 'pages/clients/view.php',
     'clients/create'=> 'pages/clients/create.php',
     'clients/edit'  => 'pages/clients/edit.php',
     'clients/delete'=> 'pages/clients/delete.php',
@@ -31,6 +34,10 @@ $routes = [
     'produits/create'=> 'pages/produits/create.php',
     'produits/edit'  => 'pages/produits/edit.php',
     'produits/delete'=> 'pages/produits/delete.php',
+    'charges'        => 'pages/charges/index.php',
+    'charges/create' => 'pages/charges/create.php',
+    'charges/edit'   => 'pages/charges/edit.php',
+    'charges/delete' => 'pages/charges/delete.php',
     'documents'       => 'pages/documents/index.php',
     'documents/create'=> 'pages/documents/create.php',
     'documents/edit'  => 'pages/documents/edit.php',
